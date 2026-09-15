@@ -64,36 +64,36 @@ yok; baseline tahminler defteri uçtan uca kullanıyor. Arayüzde fiyat kartlar�
 kalibrasyon grafiği var.
 
 Görevler
-- [ ] F1-1 `engine/ratelimit.py`: `exchangeInfo`'dan limit okuma, token bucket, `X-MBX-USED-WEIGHT-1M`
+- [x] F1-1 `engine/ratelimit.py`: `exchangeInfo`'dan limit okuma, token bucket, `X-MBX-USED-WEIGHT-1M`
       senkronu, 429/418 davranışı + testleri (respx).
-- [ ] F1-2 Binance HTTP istemcisi (httpx, retry/backoff, zaman damgası normalizasyonu) + testleri.
-- [ ] F1-3 `collectors/spot_klines`: REST backfill (1m/5m/15m/1h/4h/1d, sayfalama), boşluk denetimi,
+- [x] F1-2 Binance HTTP istemcisi (httpx, retry/backoff, zaman damgası normalizasyonu) + testleri.
+- [x] F1-3 `collectors/spot_klines`: REST backfill (1m/5m/15m/1h/4h/1d, sayfalama), boşluk denetimi,
       yalnızca kapanmış mum yazma, idempotent upsert + testleri (kaydedilmiş yanıt fixture'ları).
-- [ ] F1-4 `collectors/binance_ws` altyapısı: combined stream, yeniden bağlanma, 23. saat planlı yenileme,
+- [x] F1-4 `collectors/binance_ws` altyapısı: combined stream, yeniden bağlanma, 23. saat planlı yenileme,
       `kline_1m` işleyicisi (`x=true` filtresi) + sahte akış testleri.
-- [ ] F1-5 `engine/jobs.py`: duvar saatine hizalı `Job`, `predict_*` tetikleri (+10 sn), `resolve`,
+- [x] F1-5 `engine/jobs.py`: duvar saatine hizalı `Job`, `predict_*` tetikleri (+10 sn), `resolve`,
       `gap_check`, `retention`, `health_heartbeat`; `FakeClock` ile testler (tetik anları, kaçırılan tetik
       davranışı).
-- [ ] F1-6 `tracking/ledger.py`: tahmin + modül skorları tek transaction; `non_overlapping` bayrağı; `source`
+- [x] F1-6 `tracking/ledger.py`: tahmin + modül skorları tek transaction; `non_overlapping` bayrağı; `source`
       ve `run_id` + testleri.
-- [ ] F1-7 `tracking/resolver.py`: 1m mum ile çözümleme, REST backfill yolu, 24 saat sonra `unresolved`,
+- [x] F1-7 `tracking/resolver.py`: 1m mum ile çözümleme, REST backfill yolu, 24 saat sonra `unresolved`,
       `hit`/`brier`/`realized_return` + testleri (sınır: eşitlik, eksik mum, geç gelen mum).
-- [ ] F1-8 `tracking/metrics.py`: Brier, BSS, kalibrasyon kovaları, isabet + Wilson CI, alt kümeler
+- [x] F1-8 `tracking/metrics.py`: Brier, BSS, kalibrasyon kovaları, isabet + Wilson CI, alt kümeler
       (all / non_overlapping / high_confidence), günlük seri; elle hesaplanmış örneklerle testler.
-- [ ] F1-9 Baseline tahminciler (`climatology`, `momentum`), `predict_*` işlerine bağlanması
+- [x] F1-9 Baseline tahminciler (`climatology`, `momentum`), `predict_*` işlerine bağlanması
       (`source='baseline'`) + testleri.
-- [ ] F1-10 `tests/lookahead/test_resolver_boundary` ve `test_truncation_invariance` (candles için; diğer veri
+- [x] F1-10 `tests/lookahead/test_resolver_boundary` ve `test_truncation_invariance` (candles için; diğer veri
       setleri kendi fazında eklenir).
-- [ ] F1-11 API: `GET /predictions`, `/predictions/{id}`, `/market/{symbol}` (fiyat + 24s Δ + baseline
+- [x] F1-11 API: `GET /predictions`, `/predictions/{id}`, `/market/{symbol}` (fiyat + 24s Δ + baseline
       tahminler), `/market/{symbol}/candles`, `/calibration` (Brier serisi, kovalar, isabet), `/health`;
       `api/live_relay.py` (miniTicker → `price.*`); outbox `prediction.created`, `outcome.resolved`,
       `health.changed`.
-- [ ] F1-12 Frontend: Dashboard (CoinCard: canlı fiyat + baseline olasılık placeholder'ı + DataHealthDot),
+- [x] F1-12 Frontend: Dashboard (CoinCard: canlı fiyat + baseline olasılık placeholder'ı + DataHealthDot),
       Tahmin geçmişi tablosu (filtre + cursor sayfalama + Drawer), Kalibrasyon ekranının Brier serisi ve
       kalibrasyon eğrisi (baseline verisiyle), `DataStatusStrip` gerçek collector verisiyle (çalışıyor / son
       güncelleme / kopuk).
-- [ ] F1-13 `make backfill` CLI (klines; ileride diğer setler eklenir).
-- [ ] F1-14 Retention işi (outbox 24 saat; klines silinmez, K21) + testi.
+- [x] F1-13 `make backfill` CLI (klines; ileride diğer setler eklenir).
+- [x] F1-14 Retention işi (outbox 24 saat; klines silinmez, K21) + testi.
 
 Bitti sayılır
 - 3 sembol için 1m..1d mumlar canlı akıyor; WS kesilince boşluk 5 dk içinde REST ile dolmuş oluyor (test ve
@@ -102,6 +102,19 @@ Bitti sayılır
   ve kalibrasyon eğrisi doluyor.
 - Look-ahead testleri (`resolver_boundary`, `truncation_invariance`) yeşil.
 - Sistem 24 saat kesintisiz çalışmış, hiçbir supervisor sürekli yeniden başlamıyor (health tablosu temiz).
+
+Faz 1 durum notu (geliştirme ortamında doğrulandı)
+- Doğrulandı: `make check` (171 backend + 30 frontend testi), `make backfill` (3 sembol × 6 zaman dilimi =
+  38.568 mum, 8 saniye), engine'in WS'ten canlı mum yazması, dört ufukta referans tahmin üretimi, ufuk
+  dolunca çözümleme, `/predictions` ve `/calibration` uçları, tarayıcıda Panel / Tahmin geçmişi /
+  Kalibrasyon ekranları (konsolda hata yok), canlı fiyatın WebSocket ile panele akması.
+- **Gerçek Binance'e bağlanılamadı:** bu geliştirme ortamının ağ politikası `api.binance.com` adresini
+  403 ile engelliyor. Bu yüzden uçtan uca doğrulama, aynı yanıt biçimlerini üreten **yerel bir sahte
+  Binance sunucusuyla** yapıldı; birim testleri kayıtlı gerçek yanıt biçimlerini kullanır. Gerçek API'ye
+  ilk bağlantı **kullanıcının makinesinde** olacak; ilk çalıştırmada `make backfill` çıktısı ve veri
+  durumu şeridi kontrol edilmeli.
+- Ekran görüntülerindeki sayılar sahte sunucunun sentetik fiyat serisinden gelir; **piyasa verisi
+  değildir**. Gerçek isabet oranları ancak sistem sende çalıştıkça birikir.
 
 ---
 

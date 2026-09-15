@@ -1,6 +1,5 @@
 import {
   CartesianGrid,
-  Legend,
   ReferenceLine,
   Scatter,
   ScatterChart,
@@ -83,11 +82,6 @@ export function CalibrationCurve({ bins }: { bins: CalibrationBin[] }) {
               ? [`%${Math.round(value * 100)}`, name]
               : [String(value ?? ''), name]
           }
-        />
-        <Legend
-          verticalAlign="top"
-          height={24}
-          wrapperStyle={{ fontSize: 11, color: 'var(--color-muted)' }}
         />
         <Scatter
           name={tr.calibration.observed}

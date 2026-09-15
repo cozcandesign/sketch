@@ -40,6 +40,7 @@ export const tr = {
     referenceOnly:
       'Şu an yalnızca referans tahminciler çalışıyor. Gerçek sinyal modülleri Faz 2 ile gelir.',
     horizonHeader: 'Yukarı olasılığı',
+    models: { climatology: 'taban oranı', momentum: 'son mum rengi' },
     change24h: '24s',
     candles: 'mum',
   },

@@ -2,17 +2,61 @@ import { Link } from 'react-router'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { ProbabilityGauge } from '@/components/domain/ProbabilityGauge'
-import { ConfidenceBadge } from '@/components/domain/ConfidenceBadge'
+import { confidenceLabelTr } from '@/components/domain/confidence'
+import { shortModelLabel } from '@/features/predictions/modelLabel'
 import { useMarket } from '@/api/queries/market'
 import { useLivePrice } from '@/store/prices'
 import { formatPercent, formatPrice } from '@/lib/format'
 import { relativeTime } from '@/lib/time'
 import { useNow } from '@/lib/useNow'
 import { tr } from '@/i18n/tr'
-import { HORIZON_LABELS, type HorizonKey } from '@/api/types'
+import { HORIZON_LABELS, type HorizonKey, type HorizonState } from '@/api/types'
+
+/** Bir ufuk için her referans tahmincinin son tahmini. Hangi tahminci olduğu her zaman yazılı. */
+function HorizonBlock({ state, now }: { state: HorizonState | undefined; now: Date }) {
+  const horizon = (state?.horizon ?? '30m') as HorizonKey
+  const latestPerModel = new Map<string, HorizonState['predictions'][number]>()
+  for (const prediction of state?.predictions ?? []) {
+    if (!latestPerModel.has(prediction.model_version)) {
+      latestPerModel.set(prediction.model_version, prediction)
+    }
+  }
+  const predictions = [...latestPerModel.values()]
+  const newest = predictions[0]
+
+  return (
+    <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium">{HORIZON_LABELS[horizon]}</span>
+        {newest ? (
+          <span className="num text-xs text-muted">
+            {relativeTime(newest.as_of, now, { never: tr.status.never })}
+          </span>
+        ) : null}
+      </div>
+      {predictions.length === 0 ? (
+        <span className="text-xs text-muted">{tr.dashboard.waitingPredictions}</span>
+      ) : (
+        predictions.map((prediction) => (
+          <ProbabilityGauge
+            key={prediction.model_version}
+            pUp={prediction.p_up}
+            label={shortModelLabel(prediction.model_version)}
+            compact
+          />
+        ))
+      )}
+      {newest ? (
+        <span className="text-xs text-muted">
+          {tr.confidence.label}: {confidenceLabelTr(newest.confidence_label)}
+        </span>
+      ) : null}
+    </div>
+  )
+}
 
 export function CoinCard({ symbol }: { symbol: string }) {
-  const { data, isLoading } = useMarket(symbol)
+  const { data } = useMarket(symbol)
   const live = useLivePrice(symbol)
   const now = useNow()
 
@@ -44,37 +88,18 @@ export function CoinCard({ symbol }: { symbol: string }) {
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
-        {(Object.keys(HORIZON_LABELS) as HorizonKey[]).map((horizon) => {
-          const state = data?.horizons.find((h) => h.horizon === horizon)
-          const prediction = state?.predictions[0]
-          return (
-            <div key={horizon} className="flex flex-col gap-1">
-              {prediction ? (
-                <>
-                  <ProbabilityGauge pUp={prediction.p_up} label={HORIZON_LABELS[horizon]} compact />
-                  <div className="flex items-center justify-between">
-                    <ConfidenceBadge label={prediction.confidence_label} />
-                    <span className="num text-xs text-muted">
-                      {relativeTime(prediction.as_of, now, { never: tr.status.never })}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">{HORIZON_LABELS[horizon]}</span>
-                  <span className="text-xs text-muted">
-                    {isLoading ? tr.common.loading : tr.dashboard.waitingPredictions}
-                  </span>
-                </div>
-              )}
-            </div>
-          )
-        })}
+      <div className="mt-2 grid grid-cols-2 gap-x-4">
+        {(Object.keys(HORIZON_LABELS) as HorizonKey[]).map((horizon) => (
+          <HorizonBlock
+            key={horizon}
+            state={data?.horizons.find((h) => h.horizon === horizon)}
+            now={now}
+          />
+        ))}
       </div>
 
       {data ? (
-        <div className="mt-3 flex gap-3 border-t border-border pt-2 text-xs text-muted">
+        <div className="mt-2 flex flex-wrap gap-x-3 border-t border-border pt-2 text-xs text-muted">
           {data.coverage
             .filter((c) => c.count > 0)
             .map((c) => (

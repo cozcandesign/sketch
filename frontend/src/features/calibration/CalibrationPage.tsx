@@ -23,12 +23,18 @@ function StatTile({ label, value, hint }: { label: string; value: string; hint?:
   )
 }
 
-function SummaryRows({ rows }: { rows: (ModelSummary | HorizonSummary)[] }) {
+function SummaryRows({
+  rows,
+  firstColumn,
+}: {
+  rows: (ModelSummary | HorizonSummary)[]
+  firstColumn: string
+}) {
   return (
     <Table>
       <thead>
         <tr>
-          <Th>{tr.predictions.columns.model}</Th>
+          <Th>{firstColumn}</Th>
           <Th align="right">{tr.calibration.sampleCount}</Th>
           <Th align="right">{tr.calibration.brier}</Th>
           <Th align="right">{tr.calibration.hitRate}</Th>
@@ -116,10 +122,10 @@ export function CalibrationPage() {
             </div>
             <div className="grid gap-3 xl:grid-cols-2">
               <Card title={tr.calibration.byModel}>
-                <SummaryRows rows={data.by_model} />
+                <SummaryRows rows={data.by_model} firstColumn={tr.predictions.columns.model} />
               </Card>
               <Card title={tr.calibration.byHorizon}>
-                <SummaryRows rows={data.by_horizon} />
+                <SummaryRows rows={data.by_horizon} firstColumn={tr.predictions.columns.horizon} />
               </Card>
             </div>
           </>

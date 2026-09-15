@@ -23,6 +23,9 @@ export function BrierSeries({ daily }: { daily: Calibration['daily'] }) {
     brier: Number(point.brier.toFixed(4)),
     n: point.n,
   }))
+  // Bilgisiz çizgi (0.25) her zaman görünür kalsın, üstte biraz pay bırak
+  const maxValue = Math.max(UNINFORMED, ...data.map((d) => d.brier))
+  const upperBound = Math.ceil((maxValue + 0.05) * 20) / 20
 
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -35,7 +38,7 @@ export function BrierSeries({ daily }: { daily: Calibration['daily'] }) {
           tickFormatter={(value: string) => value.slice(5)}
         />
         <YAxis
-          domain={[0, 'auto']}
+          domain={[0, upperBound]}
           stroke="var(--color-muted)"
           tick={{ fontSize: 11 }}
           width={44}
@@ -46,9 +49,10 @@ export function BrierSeries({ daily }: { daily: Calibration['daily'] }) {
           strokeDasharray="4 4"
           label={{
             value: tr.calibration.uninformed,
-            position: 'insideTopRight',
+            position: 'insideTopLeft',
             fill: 'var(--color-muted)',
             fontSize: 10,
+            dy: -6,
           }}
         />
         <Tooltip

@@ -176,6 +176,9 @@ class Collector(Protocol):
     def health(self) -> CollectorHealth: ...
 ```
 
+Sağlık kaydı yalnızca collector'ları değil, zamanlanmış işleri de (`heartbeat`, `resolve`, `gap_check`)
+izler; veri durumu şeridinde ikisi de görünür.
+
 `run()` istisna sızdırmaz. Her döngüde başarılıysa `last_success_at`, değilse `last_error_at`,
 `consecutive_failures` ve `last_error` güncellenir. Durumlar: `ok`, `degraded` (10 dk'dan uzun süredir
 başarısız), `down` (60 dk), `disabled`, `budget_exhausted`. Her durum değişimi `health.changed` olayı
@@ -647,7 +650,8 @@ F8-7).
 
 ### 11.1 Resolver
 
-Her dakika: `predictions WHERE target_at <= now AND id NOT IN prediction_outcomes`. Her biri için
+Her dakika, en fazla 500 tahmin: `predictions WHERE target_at <= now AND id NOT IN prediction_outcomes`.
+Uzun bir kesintiden sonra biriken sıra dakikada 500 hızıyla boşalır. Her biri için
 `candles(symbol, '1m', close_time == target_at)`. Mum varsa outcome yazılır, `resolved_by='ws'`. Yoksa ve
 `now > target_at + 10 dk` ise REST ile o dakika çekilir (`resolved_by='rest_backfill'`). Yine yoksa ve
 `now > target_at + 24 saat` ise `outcome='unresolved'`, `hit=null`, `brier=null`; metriklerde sayılmaz,
@@ -669,6 +673,12 @@ Hepsi `(symbol | all) × horizon × subset` kırılımında; `subset ∈ {all, n
 
 Modül "işe yaramıyor" eşiği: isabet CI'ının alt sınırı 0.5'i geçmiyorsa veya modül Brier ≥ 0.25 veya
 referans tahmincilerden daha kötüyse.
+
+**Faz 1 notu — metrikler anlık hesaplanır.** `metrics_daily` ve `calibration_bins` tabloları şemada
+vardır ama Faz 1'de doldurulmaz: `/calibration` isteği `prediction_outcomes` üzerinden metrikleri o an
+hesaplar. Bu, önbellek bayatlaması riskini ortadan kaldırır ve mevcut veri hacminde (günde birkaç bin
+satır) milisaniyeler sürer. Tablolar Faz 8'de, hacim önbelleklemeyi gerektirdiğinde `metrics_refresh`
+işiyle doldurulacaktır.
 
 ### 11.3 Haftalık rapor (`tracking/weekly.py`)
 
@@ -839,6 +849,7 @@ UTC; arayüz yerel saate çevirir. Hata gövdesi `{"error": {"code", "message"}}
 |---|---|---|---|
 | GET | `/predictions` | `symbol?, horizon?, status=active\|resolved\|all, source=live\|baseline, from?, to?, limit=100, cursor?` | Tahmin listesi (özet + outcome), `next_cursor` |
 | GET | `/predictions/{id}` | — | Tahmin + modül kırılımı + rapor + outcome |
+| GET | `/symbols` | — | Takip edilen semboller ve arayüz saat dilimi |
 | GET | `/market/{symbol}` | — | Son fiyat, 24s değişim, funding (anlık, z), OI (anlık, 24s Δ), L/S, F&G, volatilite rejimi, 4 ufuk için son tahmin özeti, veto/çelişki durumu, veri sağlığı |
 | GET | `/market/{symbol}/candles` | `interval, from?, to?, limit=1000` | lightweight-charts formatında mumlar |
 | GET | `/market/{symbol}/orderflow` | `from?, to?` | `orderflow_1m` + `liquidations` (panel verisi) |
@@ -856,7 +867,7 @@ UTC; arayüz yerel saate çevirir. Hata gövdesi `{"error": {"code", "message"}}
 | GET | `/config` | — | Semboller, ufuk ağırlıkları (aktif), uyarı eşikleri, bildirim eşiği, saat dilimi, LLM (modeller, Kademe 2 eşiği, bütçe tavanı, kademe durumları) |
 | PUT | `/config` | Kısmi gövde | Doğrular (sembol `exchangeInfo`'da var mı, eşik aralıkları, tavan > 0), `settings` yazar, `settings.changed` yayınlar |
 | GET | `/costs` | `window=today\|month\|30d\|all` | Toplam harcama, tavan, kalan, kademe ve model kırılımı, günlük seri, çağrı ve token sayıları, kademe durumu |
-| GET | `/health` | — | Collector sağlığı (durum, son başarı, son hata), engine heartbeat, DB boyutu, outbox gecikmesi, WS relay durumu |
+| GET | `/health` | — | Collector **ve iş** sağlığı (durum, son başarı, son hata), engine heartbeat, DB boyutu, outbox gecikmesi, WS istemci sayısı, canlı fiyat akışı durumu |
 
 **WebSocket** `/ws`:
 
