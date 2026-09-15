@@ -4,6 +4,10 @@ Fazlar sıralıdır; bir faz "Bitti sayılır" maddelerinin tamamı sağlanmadan
 Görev kimlikleri `F<faz>-<no>` commit gövdesinde `Refs:` ile anılır. Biten görev `[x]` yapılır.
 Faz içine ROADMAP'te olmayan iş eklenmez; gerekiyorsa önce buraya görev olarak yazılır.
 
+**Faz 0–9 temel sistemdir ve sırayla yapılır. Faz 10 ve sonrası genişletmedir**; kendi kuralları vardır
+(erişim doğrulaması, tek kaynak, 200 tahminlik ispat) ve aralarındaki sıra esnektir — erişilemeyen bir
+kaynak fazı atlanır. Bkz. "Faz 10 ve sonrası" bölümü ve CLAUDE.md §14.
+
 **Sıra neden böyle:** Kullanıcı gereksinimi doğruluk takibinin tahmin motorundan önce gelmesi. Bu yüzden
 Faz 1 veri omurgası + tahmin defteri + metriklerdir; gerçek sinyal modülleri Faz 2'den itibaren gelir ve
 üretilen her tahmin ilk günden ölçülür. İleriye dönük veri (OI, likidasyon, haber) ancak sistem çalışırken
@@ -369,11 +373,267 @@ Bitti sayılır
 
 ---
 
-## Sonraya bırakılanlar (bu fazlarda yapılmaz)
+## Faz 10 ve sonrası — genişletme fazları
+
+Bu fazlar **Faz 1–9 bitmeden ve temel sistem canlıda en az birkaç hafta ölçülmeden başlamaz.** İlke ve
+kurallar CLAUDE.md §14'tedir; burada yalnızca faz içerikleri var. Her genişletme fazı için değişmez
+kurallar:
+
+1. **Önce erişim doğrulaması (her fazın `-0` görevi).** Uç nokta gerçekten çağrılır, yanıt biçimi
+   `tests/fixtures/` altına kaydedilir, hız limiti ve kullanım koşulları okunur, geçmiş veri derinliği
+   ölçülür. Erişilemiyorsa **faz atlanır ve kullanıcıya raporlanır**; uydurma veri kullanılmaz.
+2. **Faz başına tek veri kaynağı.** İki kaynak aynı fazda paketlenmez; hangisinin işe yaradığı
+   ayrıştırılamaz hale gelir.
+3. **Yeni modül düşük ağırlıkla başlar** (0.05) ve `prediction_signals` üzerinden ayrı ölçülür.
+4. **200 çözümlenmiş tahmin ispatı (K26).** Modülün isabet oranının Wilson alt sınırı her iki referans
+   tahmincinin isabetini geçmeli. Geçemezse Faz 17 tasfiye akışına girer.
+5. **Geçmiş veri yoksa backtest edilmez, ileriye dönük ölçülür.** Bu dürüstçe yazılır, "backtest ettik"
+   denmez.
+6. Fazlar arası sıra esnektir: erişim doğrulaması başarısız olan faz atlanıp sonraki faza geçilir.
+
+> **Ağ notu:** Bu dokümandaki kaynakların hiçbiri Claude'un geliştirme ortamından doğrulanamaz; o ortamın
+> ağ politikası `api.binance.com` dahil dış adresleri engelliyor. Erişim doğrulaması **kullanıcının
+> makinesinde** yapılır. Aşağıdaki "beklenen uç nokta" bilgileri plan içindir, doğrulanmış gerçek değildir.
+
+---
+
+## Faz 10 — Opsiyon verisi (Deribit)
+
+**Neden:** Opsiyon piyasası, spot fiyatın içermediği bir şeyi taşır: piyasanın **gelecek volatilite
+beklentisi** ve hangi yönde korunma satın aldığı. Fiyattan türetilemez.
+
+**Beklenen kaynak:** Deribit public REST (anahtar gerekmez): `/public/get_instruments`,
+`/public/get_book_summary_by_currency`, `/public/ticker` (greeks + örtük volatilite),
+`/public/get_index_price`. BTC ve ETH kapsamı iyi; **SOL opsiyon kapsamı doğrulanmalı**, yoksa o sembol
+için modül "veri yok" der.
+
+Görevler
+- [ ] F10-0 Erişim doğrulaması: uç noktalar, hız limiti, SOL kapsamı, geçmiş derinliği. Rapor edilmeden
+      sonraki göreve geçilmez.
+- [ ] F10-1 `collectors/deribit.py`: enstrüman listesi, vade takvimi, zincir özeti; 5 dk periyot.
+- [ ] F10-2 Tablolar: `option_chain_snapshots` (vade × kullanım fiyatı özetleri), `option_metrics`
+      (ATM IV, skew, put/call, term structure, max pain, yaklaşık GEX), `option_expiries`.
+- [ ] F10-3 Metrik hesapları + birim testleri: ATM örtük volatilite, 25-delta risk reversal (skew),
+      açık pozisyona dayalı put/call oranı, ön vade ile arka vade IV farkı (term structure),
+      max pain, yaklaşık gamma exposure. Her biri elle hesaplanmış küçük zincirle test edilir.
+- [ ] F10-4 `FeatureStore`: opsiyon veri seti + kesme kuralı (`snapshot_ts <= as_of`) + truncation testi.
+- [ ] F10-5 `signals/options.py`: IV rejimi, skew sapması, term structure eğimi, vadeye yakınlık.
+      Ağırlık 0.05 başlar.
+- [ ] F10-6 Vade günleri `calendar_events` tablosuna yazılır (Faz 5 takvimiyle aynı yol).
+- [ ] F10-7 Arayüz: Coin detayda opsiyon paneli (IV terim yapısı, skew, put/call, max pain seviyesi).
+- [ ] F10-8 Kalibrasyon ekranında modül satırı; 200 tahmin sayacı görünür.
+
+Bitti sayılır
+- Opsiyon metrikleri 7 gün kesintisiz toplanıyor, `coverage` > %95.
+- Modül tahminlere katılıyor ve ayrı ölçülüyor; 200 tahmin dolmadan ağırlık artırılmıyor.
+- SOL kapsamı yoksa bu açıkça raporlanmış ve modül o sembolde "veri yok" diyor.
+
+---
+
+## Faz 11 — Borsa arası fiyat farkı ve basis
+
+**Neden:** Aynı varlığın farklı borsalardaki fiyat farkı, **hangi tarafın alıcı olduğunu** gösterir
+(ABD kurumsalı mı, Kore perakendesi mi). Perp-spot basis kaldıraçlı talebin fiyatıdır. Tek borsanın
+fiyatından görülemez.
+
+**Beklenen kaynak:** Coinbase Exchange public API (ticker, order book), Upbit public API (KRW
+fiyatları) + USD/KRW kuru (yfinance `KRW=X`), Kraken public API, Binance USDT-M perpetual (Faz 3'te
+zaten toplanıyor) ve üç aylık vadeli kontratlar.
+
+Görevler
+- [ ] F11-0 Erişim doğrulaması: Coinbase, Upbit, Kraken public uçları; hız limitleri; USD/KRW kuru
+      kaynağının güvenilirliği.
+- [ ] F11-1 `collectors/crossexchange.py`: sembol başına çoklu borsa fiyatı ve top-20 derinliği, 1 dk.
+- [ ] F11-2 Tablolar: `exchange_prices`, `exchange_depth`, `basis_series`.
+- [ ] F11-3 Hesaplar + testleri: Coinbase primi (Coinbase/Binance − 1), Kore primi (Upbit KRW → USD
+      çevrimi sonrası fark), perp-spot basis, üç aylık vadeli yıllıklandırılmış basis (term structure),
+      borsalar arası derinlik oranı.
+- [ ] F11-4 `FeatureStore` + kesme + truncation testi.
+- [ ] F11-5 `signals/crossexchange.py`: prim sapması (30 günlük z), basis rejimi, derinlik dengesizliği.
+      Ağırlık 0.05.
+- [ ] F11-6 Arayüz: Coin detayda "borsa farkı" paneli; prim serileri.
+- [ ] F11-7 Kalibrasyon modül satırı + ispat sayacı.
+
+Bitti sayılır
+- Üç borsadan fiyat 7 gün kesintisiz; kur çevrimi doğrulanmış (bilinen bir günün primi elle kontrol).
+- Modül ayrı ölçülüyor.
+
+---
+
+## Faz 12 — Kurumsal akış (ETF ve CME)
+
+**Neden:** Spot ETF akışları ve CME açık pozisyonu, kripto borsalarında görünmeyen **kurumsal talebi**
+gösterir. Hafta sonu CME kapalıyken oluşan boşluklar ayrı bir davranış üretir.
+
+**Beklenen kaynak — en riskli faz.** ETF günlük net akışları için resmî ücretsiz API yok; Farside
+Investors gibi kaynaklar HTML tablo yayınlar (scraping; K6'daki "scraping kırılgan" gerekçesiyle
+çelişir). CME açık pozisyonu için ücretsiz gecikmeli veri kayıt gerektirebilir.
+
+Görevler
+- [ ] F12-0 Erişim doğrulaması **ve karar noktası**: ETF akışı ve CME OI için gerçekten ücretsiz,
+      kullanım koşullarına uygun bir yol var mı? Yoksa seçenekler (ücretli kaynak, elle günlük giriş,
+      fazı atlama) kullanıcıya sunulur ve **kullanıcı karar verene kadar faz başlamaz.**
+- [ ] F12-1 `collectors/etf_flows.py`: günlük net akış (varlık bazında), yayın gecikmesi modellenir
+      (akış T günü için T+1'de yayımlanır → look-ahead riski burada yüksek, `available_at` zorunlu).
+- [ ] F12-2 `collectors/cme.py`: açık pozisyon, uzlaşma fiyatı, seans saatleri.
+- [ ] F12-3 Tablolar: `etf_flows`, `cme_daily`, `cme_sessions`.
+- [ ] F12-4 Hesaplar + testleri: 5 günlük kümülatif net akış, akışın piyasa değerine oranı, CME OI
+      değişimi, hafta sonu boşluğu (Cuma kapanış → Pazar açılış) ve boşluğun kapanma oranı.
+- [ ] F12-5 `FeatureStore` + `available_at` kesmesi + truncation testi (bu fazda kritik: veri geç yayımlanır).
+- [ ] F12-6 `signals/institutional.py`, ağırlık 0.05.
+- [ ] F12-7 Arayüz: Panelde "kurumsal akış" şeridi; Coin detayda akış serisi.
+- [ ] F12-8 Kalibrasyon modül satırı + ispat sayacı.
+
+Bitti sayılır
+- Akış verisi en az 30 gün geriye dolmuş ve yayın gecikmesi `available_at` ile doğru modellenmiş.
+- Truncation testi, T günü akışının T günü tahminlerinde **görünmediğini** kanıtlıyor.
+
+---
+
+## Faz 13 — Zincir üstü (on-chain)
+
+**Neden:** Borsaya giren/çıkan coin miktarı ve stablecoin arzı, alım gücünün **fiyat oluşmadan önceki**
+hareketidir.
+
+**Beklenen kaynak:** DefiLlama stablecoins API (ücretsiz, anahtarsız) → stablecoin arzı ve basım;
+mempool.space (BTC ağ istatistikleri, ücretsiz); Etherscan ücretsiz kademe (anahtar gerekir, ücretsiz)
+→ büyük transferler ve bilinen borsa adreslerine akış. **Borsa net akışının kaliteli hali genelde
+ücretlidir (Glassnode, CryptoQuant).** Ücretsiz uçlarla başlanır; yetersizse bu açıkça raporlanır.
+
+Görevler
+- [ ] F13-0 Erişim doğrulaması: DefiLlama, mempool.space, Etherscan ücretsiz kademe limitleri; borsa
+      adres listelerinin güvenilirliği. Ücretsiz veriyle ne kadarının yapılabildiği raporlanır.
+- [ ] F13-1 `collectors/onchain.py`: stablecoin arzı ve basım/yakım olayları (saatlik).
+- [ ] F13-2 Borsa net akışı: bilinen borsa adreslerine giren/çıkan tutar; adres listesi `config/` altında
+      sürümlenir, kaynağı belgelenir. Kapsamın kısmi olduğu arayüzde yazılır.
+- [ ] F13-3 Büyük transfer tespiti (eşik config'de), 1 saatlik kovalar.
+- [ ] F13-4 Tablolar: `stablecoin_supply`, `exchange_flows`, `large_transfers`.
+- [ ] F13-5 `FeatureStore` + kesme (blok onay gecikmesi dahil) + truncation testi.
+- [ ] F13-6 `signals/onchain.py`, ağırlık 0.05.
+- [ ] F13-7 Arayüz: Coin detayda zincir üstü paneli; kapsam uyarısı görünür.
+- [ ] F13-8 Kalibrasyon modül satırı + ispat sayacı.
+
+Bitti sayılır
+- Stablecoin arzı 30 gün geriye dolu ve bilinen bir basım olayı doğrulanmış.
+- Borsa net akışının kapsam sınırı ölçülmüş ve arayüzde yazılı.
+
+---
+
+## Faz 14 — Likidasyon haritası
+
+**Neden:** Kaldıraçlı pozisyonların nerede tasfiye olacağı, fiyatın nereye çekileceğine dair konum
+bilgisidir. **Fiyat dönüşümü değildir** (CLAUDE.md §14.1): açık pozisyon, funding ve kaldıraç
+dağılımından türetilir.
+
+**Kaynak:** Faz 3'te zaten toplanan veriler (OI, funding, long/short oranı, gerçekleşen likidasyonlar).
+Yeni dış kaynak yok; bu yüzden erişim doğrulaması yerine **model doğrulaması** yapılır.
+
+Görevler
+- [ ] F14-0 Yöntem doğrulaması: tahmin edilen likidasyon kümeleri ile **gerçekleşen** `forceOrder`
+      olayları karşılaştırılır (Faz 3'ten beri arşivleniyor). Tahmin gücü yoksa faz burada durur ve
+      raporlanır.
+- [ ] F14-1 `features/liquidation_map.py`: OI + funding + varsayılan kaldıraç dağılımından fiyat
+      seviyesi başına yaklaşık tasfiye yoğunluğu.
+- [ ] F14-2 Feature'lar: en yakın kümeye uzaklık (ATR cinsinden), küme büyüklüğü, yukarı/aşağı küme
+      asimetrisi.
+- [ ] F14-3 Doğrulama metriği: gerçekleşen likidasyon dalgalarının tahmin edilen kümelere düşme oranı;
+      rastgele seviyelere göre üstünlük testi.
+- [ ] F14-4 `signals/orderflow.py` içine bileşen olarak eklenir (yeni modül değil; mevcut modülün yeni
+      bileşeni) ve bileşen bazlı ayrı ölçülür.
+- [ ] F14-5 Arayüz: Coin detayda mum grafiği üzerine likidasyon yoğunluk katmanı.
+
+Bitti sayılır
+- F14-0 doğrulaması pozitif: kümeler rastgeleden anlamlı ölçüde iyi.
+- Bileşen ayrı ölçülüyor ve order flow modülünün isabetini düşürmüyor.
+
+---
+
+## Faz 15 — Zaman ve rejim
+
+**Neden:** Piyasa davranışı saate, güne ve seans yapısına göre değişir; korelasyon rejimi kırıldığında
+makro modülün anlamı değişir.
+
+**Uyarı (CLAUDE.md §14.1):** Zaman feature'ları çoklu karşılaştırma tuzağına açıktır. **Feature listesi
+bu fazda sabitlenir ve sonradan genişletilmez.** Liste: haftanın günü, günün saati (4 dilim), ay sonu
+(son 2 iş günü), opsiyon vadesi günü (Faz 10'dan), CME açılış/kapanış pencereleri.
+
+Görevler
+- [ ] F15-0 Feature listesini dondur ve ROADMAP'e yaz. Liste dışına çıkmak yeni bir faz gerektirir.
+- [ ] F15-1 `features/time_features.py` + birim testleri (saat dilimi ve tatil sınırları dahil).
+- [ ] F15-2 `features/regime.py`: BTC-SPX ve BTC-DXY hareketli korelasyon (30 ve 90 gün),
+      korelasyon kırılması tespiti (pencereler arası fark eşiği).
+- [ ] F15-3 `FeatureStore` + truncation testi.
+- [ ] F15-4 `signals/macro.py` içine rejim bileşeni; zaman feature'ları ensemble'a **modül olarak değil**,
+      güven düzeltmesi olarak girer (ör. düşük likidite saatlerinde güven düşer). Gerekçesi: zaman
+      başlı başına yön sinyali değildir.
+- [ ] F15-5 Arayüz: Kalibrasyon ekranında saat/gün bazlı isabet kırılımı (yalnız gözlem amaçlı).
+- [ ] F15-6 Korelasyon kırılması uyarı kuralı (Faz 6 uyarı motoruna eklenir).
+
+Bitti sayılır
+- Zaman feature'ları güveni etkiliyor, yönü doğrudan etkilemiyor.
+- Korelasyon kırılması bilinen bir geçmiş olayda (ör. 2025 makro şoku) doğrulanmış.
+
+---
+
+## Faz 16 — Haber derinleştirme
+
+**Neden:** Faz 4 haberi sınıflandırır; bu faz haberin **güvenilirliğini ve yayılma hızını** ölçer.
+Aynı haber tek kaynakta mı kaldı, yoksa 10 dakikada 6 kaynağa mı düştü — bu bilgi haber metninde yoktur.
+
+**Beklenen kaynak:** SEC EDGAR full-text search API (ücretsiz, anahtarsız, `User-Agent` zorunlu),
+resmî kaynaklar (Fed, CFTC, borsa duyuru sayfaları), mevcut RSS akışları (yayılma hızı için).
+
+Görevler
+- [ ] F16-0 Erişim doğrulaması: EDGAR API limitleri ve kullanım koşulları; resmî kaynakların makine
+      okunur bir akışı var mı.
+- [ ] F16-1 Kaynak güvenilirlik ağırlığı: her kaynağın geçmiş `news_outcomes` isabetinden öğrenilen
+      katsayı; en az 50 haber biriktikten sonra devreye girer, öncesinde 1.0.
+- [ ] F16-2 Yayılma hızı: bir `dedup_group` kaç kaynağa kaç dakikada düştü; hız ve genişlik feature'ı.
+- [ ] F16-3 `collectors/edgar.py`: ilgili şirket ve fon başvuruları (ETF dosyalamaları dahil).
+- [ ] F16-4 Benzer geçmiş olay arşivi: kategori + etki bazında geçmiş olayların sonraki 1s/4s/24s
+      hareket dağılımı; Kademe 2 promptuna **veri olarak** verilir (metin olarak değil).
+- [ ] F16-5 `signals/news.py` genişletme: güvenilirlik ve yayılma bileşenleri; bileşen bazlı ölçüm.
+- [ ] F16-6 Arayüz: Haber kartında kaynak güvenilirliği ve yayılma göstergesi.
+
+Bitti sayılır
+- Yayılma hızı 30 gün ölçülmüş; hızlı yayılan haberlerin etkisi yavaşlardan ayrışıyor mu, veriyle yazılı.
+- Kaynak ağırlıkları kalibrasyon ekranında görünüyor.
+
+---
+
+## Faz 17 — Modül tasfiyesi
+
+**Neden:** Sistem büyüdükçe işe yaramayan modüller birikir. Tasfiye olmazsa gürültü ağırlık taşır.
+
+Görevler
+- [ ] F17-1 `tracking/module_audit.py`: 200 çözümlenmiş tahmin eşiğini geçmiş her modül için isabet +
+      Wilson CI, modül Brier, referans tahmincilerle karşılaştırma.
+- [ ] F17-2 Tasfiye kuralı: modülün isabet CI alt sınırı her iki referansın isabetini geçemiyorsa
+      **ağırlık sıfırlama önerisi** üretilir (`weight_proposals` tablosuna, K3 ile aynı akış).
+- [ ] F17-3 Haftalık rapora "tasfiye adayları" bölümü; her aday için kaç tahminde nasıl performans.
+- [ ] F17-4 Arayüz: Kalibrasyon ekranında **"İşe yaramayan modüller"** bölümü — modül, n, isabet + CI,
+      referans farkı, öneri, "Onayla / Reddet" düğmeleri.
+- [ ] F17-5 Sıfırlanan modül durumu: kod kalır, ağırlık 0, `prediction_signals`'a yazmaya **devam eder**
+      (ölçüm sürer). Arayüzde "ölçülüyor, kullanılmıyor" etiketi.
+- [ ] F17-6 Yeniden ispat kuralı: sıfırlanan modülün veri kaynağı veya hesabı değişirse sayaç sıfırlanır
+      ve 200 tahminlik süreç yeniden başlar. Otomatik geri dönüş yok.
+- [ ] F17-7 Testler: sentetik "bilgili modül" ve "rastgele modül" ile tasfiye kararının doğruluğu.
+
+Bitti sayılır
+- En az bir modül için tasfiye önerisi üretilmiş ve arayüzde görünmüş (öneri doğru olmasa bile akış çalışıyor).
+- Sıfırlanan modül ölçülmeye devam ediyor.
+
+---
+
+## Sonraya bırakılanlar (hiçbir fazda yapılmaz; ayrı karar gerektirir)
 
 - Message Batches API ile toplu haber sınıflandırma (`llm/batch.py`) — geçmiş haber arşivi olursa.
 - Kademe 2 için daha güçlü model denemesi — yalnızca Haiku vs Sonnet ölçümü (K20) Sonnet'in değerini gösterdikten sonra.
 - Ücretli geçmiş türev verisi (OI/likidasyon) ile order flow backtest'i — bütçe kararı.
+- Ücretli zincir üstü ve kurumsal akış kaynakları (Glassnode, CryptoQuant, CME DataMine) — Faz 12 ve 13
+  ücretsiz uçlarla yetersiz kalırsa kullanıcıya seçenek olarak sunulur.
+- Otomatik ağırlık değişikliği — K3 gereği hiçbir fazda yapılmaz; sistem yalnızca öneri üretir.
+- Fiyat serisinden türetilen yeni gösterge eklemek — CLAUDE.md §14.1 gereği ilke olarak reddedilir.
 - TimescaleDB geçişi (§20) — SQLite darboğaz olursa.
 - Yeni coin için LLM şema `Literal` güncellemesinin otomasyonu.
 - Açık tema.

@@ -27,7 +27,8 @@ Kararı kullanıcı verir. Sistem şunu der: *"Şu veriler şunu gösteriyor, ol
 - **Telegram, e-posta, push servisi yok.** Tek çıktı kanalı: web arayüzü + tarayıcı Notification API.
 - **Uydurma feature yok.** Az ve doğrulanmış feature, çok ve gürültülü olandan iyidir. Yeni bir gösterge veya
   alt sinyal eklemek için dört şart: (1) ROADMAP'te görev olarak yazılmış, (2) unit testi var,
-  (3) look-ahead testi geçiyor, (4) kalibrasyon ekranında ayrı ölçülebiliyor.
+  (3) look-ahead testi geçiyor, (4) kalibrasyon ekranında ayrı ölçülebiliyor. Faz 10'dan sonraki
+  genişletmeler ayrıca §14'teki ilkeye uyar: **yeni indikatör değil, yeni veri kaynağı.**
 - **Secret koda gömülmez.** Anahtarlar yalnızca `.env` içinde; `.env` git'e girmez; loglara yazılmaz.
 
 ## 2. Kullanıcı ve iletişim
@@ -72,6 +73,8 @@ Kararı kullanıcı verir. Sistem şunu der: *"Şu veriler şunu gösteriyor, ol
 | K22 | Veri durumu şeridi | Her ekranın üstünde: hangi collector çalışıyor, son güncelleme ne zaman, hangisi kopuk. | Kullanıcı kararı; "veri yok" durumları görünür olsun. |
 | K23 | Maliyet | Ayrı `/costs` endpoint'i ve Maliyet ekranı: günlük/aylık API harcaması, kademe kırılımı. Ayarlar ekranında bütçe tavanı. | Kullanıcı kararı. |
 | K24 | Süreç adı | Veri toplayan ve tahmin üreten süreç `engine` (`python -m marketpulse.engine`, compose servisi `engine`). | Kullanıcı spesifikasyonu: "engine + api + frontend". |
+| K25 | Genişletme ilkesi | Faz 10'dan itibaren sisteme **yeni indikatör değil, yeni veri kaynağı** eklenir. Aynı fiyat serisinin başka bir dönüşümü yeni bilgi getirmez, yalnızca aşırı uyum (overfitting) riski getirir. Ayrıntı §14. | Kullanıcı kararı. Fiyattan türetilen her yeni gösterge aynı gürültüyü yeniden paketler; bilgi ancak dışarıdan gelir. |
+| K26 | Modül ispat eşiği | Her yeni sinyal modülü, canlıda **en az 200 çözümlenmiş tahmin** boyunca iki referans tahminciyi de yenmek zorundadır. Yenemezse sistem ağırlık sıfırlama önerir, kullanıcı onaylar (K3 ile aynı yol). | Bir modülün işe yaradığı fikirle değil ölçümle belirlenir. Ölçüm penceresi yeterince uzun olmazsa gürültü "başarı" gibi görünür. |
 
 Yeni karar alındığında tabloya satır eklenir. Karar değişirse satır güncellenir, eski satır silinmez;
 "iptal edildi: K#, tarih, sebep" notu düşülür.
@@ -290,3 +293,62 @@ Ayrıntı: `ARCHITECTURE.md`.
   şekilde yazılır; çıktı şema ile doğrulanır; haber metni hiçbir zaman sistem promptuna eklenmez.
 - Arayüz, kullanıcı girdisini (sembol adı, eşik değeri) backend'de doğrular; sembol listesi Binance
   `exchangeInfo` ile kontrol edilir.
+
+## 14. Genişletme ilkesi (Faz 10 ve sonrası)
+
+Faz 1–9 temel sistemi kurar. Ondan sonraki her faz **tek bir yeni veri kaynağı** ekler. Bu bölüm o
+fazların değişmez kurallarıdır; ROADMAP'teki faz tanımları bunun üstüne yazılır.
+
+### 14.1 Yeni indikatör değil, yeni veri kaynağı
+
+Aynı fiyat serisinin farklı bir dönüşümü (yeni bir hareketli ortalama, yeni bir osilatör, aynı serinin
+başka bir penceresi) sisteme bilgi eklemez. Aynı gürültüyü yeniden paketler ve geçmişe uydurma riskini
+artırır. Bilgi ancak **fiyatta henüz görünmeyen bir yerden** gelir.
+
+| Meşru genişletme (yeni veri kaynağı) | Meşru olmayan (aynı serinin dönüşümü) |
+|---|---|
+| Opsiyon zinciri: örtük volatilite, skew, açık pozisyon | Fiyattan hesaplanan yeni bir volatilite göstergesi |
+| Başka borsadaki fiyat ve derinlik | Aynı borsanın fiyatının başka bir zaman diliminde EMA'sı |
+| ETF net akışı, CME açık pozisyonu | RSI'ın 9 yerine 11 periyotlusu |
+| Zincir üstü transfer ve stablecoin arzı | MACD'nin farklı parametreleri |
+| Haberin kaç kaynağa kaç dakikada düştüğü | Mevcut haber skorunun karekökü |
+
+**Konum (positioning) verisi fiyat dönüşümü değildir.** Açık pozisyon, funding, kaldıraç dağılımı ve
+bunlardan türetilen likidasyon kümeleri (Faz 14) piyasa katılımcılarının nerede durduğunu anlatır;
+fiyatın kendisinden çıkarılamaz. Bu yüzden ilkeye aykırı değildir.
+
+**Zaman ve takvim feature'ları (Faz 15) sınırlı tutulur.** Bunlar dışarıdan gelir ama örnek sayısı
+azdır ve çoklu karşılaştırma tuzağı yüksektir: yeterince çok zaman dilimi denenirse biri her zaman
+"anlamlı" çıkar. Faz 15'te feature sayısı baştan sabitlenir ve sonradan genişletilmez.
+
+### 14.2 Her yeni veri kaynağı için ön koşul: erişim doğrulaması
+
+Faz başlamadan **önce** veri kaynağının gerçekten ücretsiz ve erişilebilir olduğu doğrulanır: uç
+nokta çağrılır, yanıt biçimi kaydedilir, kullanım koşulları ve hız limiti okunur, geçmiş veri derinliği
+ölçülür.
+
+- Erişilemiyorsa (ücretli, anahtar zorunlu, bölge kısıtlı, ağ engeli) **faz atlanır ve kullanıcıya
+  raporlanır.** Karar kullanıcınındır: bütçe ayırmak, başka kaynak aramak veya vazgeçmek.
+- **Uydurma veri asla kullanılmaz.** Test amaçlı sentetik seri yalnızca `tests/` içinde, gerçek yanıt
+  biçimini taklit ederek kullanılır; üretim veritabanına sentetik satır yazılmaz.
+- Kaynak zamanla bozulursa (şema değişikliği, kapanan uç nokta) ilgili collector `down` olur, modül
+  "veri yok" der ve ensemble ağırlığı diğer modüllere dağıtır. Sistem durmaz.
+
+### 14.3 Her yeni modülün ispat yükümlülüğü (K26)
+
+Yeni bir sinyal modülü eklendiğinde:
+
+1. Ağırlığı **düşük** başlar (varsayılan 0.05), böylece kanıtlanmadan tahminleri sürüklemez.
+2. Modül skoru her tahminde `prediction_signals` tablosuna yazılır; kalibrasyon ekranında ayrı ölçülür.
+3. **En az 200 çözümlenmiş tahmin** biriktikten sonra değerlendirilir. Ölçüt: modülün isabet oranının
+   Wilson güven aralığı alt sınırı, **her iki referans tahmincinin** isabet oranını geçmeli.
+4. Geçemezse Faz 17'deki tasfiye akışı devreye girer: sistem ağırlık sıfırlama önerir, kullanıcı onaylar.
+   Kod silinmez; ağırlık sıfırlanır ve modül "ölçülüyor ama kullanılmıyor" durumuna geçer.
+5. Sıfırlanan bir modül, veri kaynağı veya hesap yöntemi değişirse yeniden 200 tahminlik ispat süresine
+   girer. "Bu sefer tutar" gerekçesiyle ağırlık geri verilmez.
+
+### 14.4 Faz sırası bozulmaz
+
+Faz 10 ve sonrası, **Faz 1–9 bitmeden ve temel sistem canlıda ölçülmeden** başlamaz. Gerekçe: bir modülün
+işe yarayıp yaramadığı ancak çalışan bir doğruluk takibi varsa söylenebilir. Ölçüm altyapısı olmadan
+eklenen her modül inanç meselesidir.
