@@ -80,7 +80,7 @@ bunları arayüze taşır.
 | Süreç | Görev | DB erişimi | Komut |
 |---|---|---|---|
 | `engine` | Collector'lar, haber sınıflandırma (iki kademe), tahmin işleri, resolver, haber sonuç ölçümü, metrikler, uyarılar, retention | Tek düzenli yazıcı | `python -m marketpulse.engine` |
-| `api` | REST + WebSocket, outbox relay, canlı fiyat relay | Okur; yalnızca `settings`, `alerts.acknowledged_at`, `weight_proposals.status` yazar | `uvicorn marketpulse.api.app:app` |
+| `api` | REST + WebSocket, outbox relay, canlı fiyat relay; açılışta Alembic migration'larını koşar | Okur; yalnızca `settings`, `alerts.acknowledged_at`, `weight_proposals.status` yazar | `uvicorn marketpulse.api.app:create_app --factory` |
 | `frontend` | Statik SPA + reverse proxy | Yok | nginx |
 
 **Neden üç süreç:** Sinyal modülündeki bir hata API'yi düşürmemeli; API'deki yük engine'in zamanlamasını
@@ -1025,31 +1025,38 @@ metrics.compute(run_id)  →  backtest/report.py            # aynı metrik kodu
 services:
   api:
     build: ./backend
-    command: uvicorn marketpulse.api.app:app --host 0.0.0.0 --port 8000
+    command: ["uvicorn", "marketpulse.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
     env_file: .env
+    environment: {MP_DATA_DIR: /app/data, MP_DB_URL: "sqlite+aiosqlite:////app/data/marketpulse.db"}
     volumes: ["./data:/app/data"]
     ports: ["8000:8000"]
-    healthcheck: {test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/v1/health').status==200 else 1)"], interval: 30s}
+    healthcheck: {test: ["CMD", "python", "-c", "...urlopen('http://localhost:8000/api/v1/health')..."], interval: 30s}
+    restart: unless-stopped
   engine:
     build: ./backend
-    command: python -m marketpulse.engine
+    command: ["python", "-m", "marketpulse.engine"]
     env_file: .env
+    environment: {MP_DATA_DIR: /app/data, MP_DB_URL: "sqlite+aiosqlite:////app/data/marketpulse.db"}
     volumes: ["./data:/app/data"]
-    depends_on: [api]
+    depends_on: {api: {condition: service_healthy}}
     restart: unless-stopped
   frontend:
     build: ./frontend
     ports: ["3000:80"]
     depends_on: [api]
+    restart: unless-stopped
 ```
 
-- `backend/Dockerfile`: `python:3.12-slim`, `uv sync --frozen --no-dev`, non-root kullanıcı, `alembic upgrade
-  head` entrypoint'te (api servisi çalıştırır; engine bekler).
-- `frontend/Dockerfile`: `node:22-alpine` build → `nginx:alpine`; `nginx.conf` `/api` ve `/ws` proxy.
-- `make dev`: `honcho start -f Procfile.dev` → `api: uv run uvicorn ... --reload`, `engine: uv run python
-  -m marketpulse.engine`, `web: npm run dev --prefix frontend`. Tek `Ctrl+C` hepsini kapatır.
+- `backend/Dockerfile`: `python:3.12-slim`, uv ile `uv sync --frozen --no-dev`, non-root kullanıcı. Aynı imaj
+  api ve engine için kullanılır. Migration'ları api açılışta koşar (`create_app` lifespan); engine şemayı
+  60 sn bekler, hazır olmazsa kendisi koşar.
+- `frontend/Dockerfile`: `node:22-alpine` build → `nginx:1.27-alpine`; `nginx.conf` `/api` ve `/ws` proxy.
+- `make dev`: `uv run --project backend honcho start -f Procfile.dev` → `api` (uvicorn `--factory --reload`),
+  `engine`, `web` (Vite dev server, 5173, proxy ile). Tek `Ctrl+C` hepsini kapatır. Süreçler depo kökünden
+  çalışır; `.env` ve `./data` kökte kalır.
 - İlk kurulum: `cp .env.example .env` → anahtarları doldur → `docker compose up --build` →
-  `http://localhost:3000`. İlk veri için `make backfill` (Faz 1'den itibaren).
+  `http://localhost:3000`. Geliştirme için `make install` sonra `make dev`. İlk veri için `make backfill`
+  (Faz 1'den itibaren).
 
 ---
 

@@ -34,7 +34,7 @@ Görevler
       (Sidebar / Topbar / **DataStatusStrip** her ekranın üstünde / StatusBar), 7 boş rota (Dashboard, Coin,
       Haber, Tahminler, Kalibrasyon, Ayarlar, Maliyet), `WsClient`, `i18n/tr.ts`, eslint/prettier/vitest.
 - [x] F0-8 `make gen-types` (openapi-typescript) ve ilk `types.gen.ts`.
-- [ ] F0-9 `Makefile` (tüm hedefler), `Procfile.dev`, `docker-compose.yml`, iki Dockerfile, `nginx.conf`,
+- [x] F0-9 `Makefile` (tüm hedefler), `Procfile.dev`, `docker-compose.yml`, iki Dockerfile, `nginx.conf`,
       `.gitignore`, `.dockerignore`, `pre-commit` (ruff, mypy, eslint).
 - [x] F0-10 `reporting/banned_words.py` + `templates.py` ve `i18n/tr.ts`'i tarayan test (liste boşken de
       koşar).
@@ -45,6 +45,15 @@ Bitti sayılır
 - `docker compose up` ile aynı sonuç Docker'da; `http://localhost:3000` açılır ve boş da olsa çalışan bir
   sayfa görünür. (Bu, kullanıcının Faz 0 başarı ölçütüdür.)
 - `.env` olmadan uygulama anlaşılır hata ile durur (hangi anahtar eksik).
+
+Faz 0 durum notu (geliştirme ortamında doğrulandı)
+- Doğrulandı: `make check` (74 backend + 16 frontend testi), `make dev` (honcho: api + engine + Vite),
+  `vite preview` ile üretim build'i, `/api/v1/health` ve `/ws` frontend proxy'sinden, tarayıcıda (headless
+  Chromium) panel açılışı ve konsolda hata yok, engine'e SIGTERM ile temiz kapanış (heartbeat silindi, API
+  "engine kopuk" dedi), `.env` yokken anlaşılır hata (unit test + `make dev` ön kontrolü).
+- Burada çalıştırılamadı: `docker compose up --build` (geliştirme ortamında Docker daemon yok). Yalnızca
+  `docker compose config` ile dosya doğrulandı; iki Dockerfile derlenmedi. **Kullanıcının makinesinde
+  denenecek**; hata çıkarsa çıktı bir sonraki oturuma yapıştırılır.
 
 ---
 

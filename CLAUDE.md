@@ -136,12 +136,14 @@ Ayrıntı: `ARCHITECTURE.md`.
 │       ├── integration/          # DB + engine + API uçtan uca (ağ yok)
 │       └── fixtures/             # sentetik seriler, kaydedilmiş API yanıtları
 └── frontend/
-    ├── package.json  vite.config.ts  tsconfig.json  tailwind.config.ts  eslint.config.js
+    ├── package.json  vite.config.ts  tsconfig*.json  eslint.config.js  .prettierrc
+    ├── openapi.json              # make gen-types üretir; types.gen.ts'nin kaynağı
     ├── Dockerfile  nginx.conf
     └── src/
         ├── main.tsx
         ├── app/                  # router, providers, layout (Shell, Sidebar, Topbar, DataStatusStrip, StatusBar)
-        ├── api/                  # client.ts, ws.ts, types.gen.ts (OpenAPI'den üretilir), queries/
+        ├── api/                  # client.ts, ws.ts, useLive.ts, types.gen.ts (OpenAPI'den üretilir), queries/
+        ├── store/                # zustand: ui.ts (WS durumu, uyarı sayacı, tercihler)
         ├── components/ui/        # Card, Badge, Button, Table, Tabs, Drawer, Tooltip, Skeleton, Kbd
         ├── components/charts/    # CandleChart (lightweight-charts), LineChart, BarChart, CalibrationCurve, Sparkline
         ├── components/domain/    # ProbabilityGauge, ConfidenceBadge, ScoreBar, ModuleBreakdown, RationaleList, NewsCard, AlertBell, DataHealthDot
@@ -239,10 +241,11 @@ Ayrıntı: `ARCHITECTURE.md`.
 
 | Komut | Ne yapar |
 |---|---|
-| `make dev` | api (auto-reload), engine ve Vite dev server'ı birlikte başlatır (`honcho start -f Procfile.dev`) |
+| `make install` | `uv sync` (backend) + `npm install` (frontend) |
+| `make dev` | api (auto-reload), engine ve Vite dev server'ı birlikte başlatır (`honcho start -f Procfile.dev`); `.env` şart |
 | `make up` / `make down` | `docker compose up -d --build` / `docker compose down` |
 | `make logs` | compose loglarını takip eder |
-| `make test` | backend pytest + frontend vitest |
+| `make test` | backend pytest + frontend vitest (`make test-backend`, `make test-frontend` ayrı ayrı) |
 | `make lint` | ruff check + ruff format --check + eslint |
 | `make typecheck` | mypy --strict + tsc --noEmit |
 | `make check` | lint + typecheck + test. **Commit öncesi zorunlu.** |
