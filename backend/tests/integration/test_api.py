@@ -36,7 +36,7 @@ def clock() -> FakeClock:
 
 @pytest.fixture
 def client(settings: Settings, clock: FakeClock) -> Iterator[TestClient]:
-    app = create_app(settings, clock=clock)
+    app = create_app(settings, clock=clock, live_prices=False)
     with TestClient(app) as test_client:
         yield test_client
 
@@ -90,6 +90,7 @@ def test_health_without_engine_is_down(client: TestClient) -> None:
     }
     assert body["collectors"] == []
     assert body["ws"]["clients"] == 0
+    assert body["live_prices"]["connected"] is False
     assert body["api_version"] == "0.1.0"
     assert body["server_time"].startswith("2026-01-01T12:00:00")
 

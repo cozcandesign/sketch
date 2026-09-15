@@ -13,9 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from marketpulse import __version__
+from marketpulse.api.live_relay import LiveRelay, LiveState
 from marketpulse.api.outbox_relay import RelayState, run_outbox_relay
+from marketpulse.api.routers.calibration import router as calibration_router
 from marketpulse.api.routers.health import router as health_router
+from marketpulse.api.routers.market import router as market_router
+from marketpulse.api.routers.predictions import router as predictions_router
 from marketpulse.api.ws import WsHub, ws_endpoint
+from marketpulse.collectors.ws_stream import ConnectFactory, binance_connect
 from marketpulse.config import Settings, load_settings
 from marketpulse.core.clock import Clock, SystemClock
 from marketpulse.core.logging import configure_logging
@@ -30,6 +35,8 @@ def create_app(
     *,
     clock: Clock | None = None,
     migrate_on_start: bool = True,
+    connect: ConnectFactory = binance_connect,
+    live_prices: bool = True,
 ) -> FastAPI:
     """Uygulama fabrikası. Testler kendi `Settings` ve `FakeClock`'unu geçirir."""
     resolved_settings = settings or load_settings()
@@ -46,30 +53,46 @@ def create_app(
         hub = WsHub()
         relay_state = RelayState()
         stop = asyncio.Event()
-        relay_task = asyncio.create_task(
-            run_outbox_relay(
-                repo,
+        live_state = LiveState()
+        tasks = [
+            asyncio.create_task(
+                run_outbox_relay(
+                    repo,
+                    hub,
+                    resolved_clock,
+                    relay_state,
+                    stop,
+                    poll_interval=resolved_settings.outbox_poll_interval_sec,
+                ),
+                name="outbox-relay",
+            )
+        ]
+        if live_prices:
+            relay = LiveRelay(
+                resolved_settings.binance_ws_spot,
+                list(resolved_settings.symbols),
                 hub,
                 resolved_clock,
-                relay_state,
-                stop,
-                poll_interval=resolved_settings.outbox_poll_interval_sec,
-            ),
-            name="outbox-relay",
-        )
+                live_state,
+                connect=connect,
+            )
+            tasks.append(asyncio.create_task(relay.run(stop), name="live-relay"))
         app.state.settings = resolved_settings
         app.state.clock = resolved_clock
         app.state.repo = repo
         app.state.hub = hub
         app.state.relay_state = relay_state
+        app.state.live_state = live_state
         logger.bind(process="api").info("api başladı (sürüm {v})", v=__version__)
         try:
             yield
         finally:
             stop.set()
-            relay_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await relay_task
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
             await repo.close()
             logger.bind(process="api").info("api kapandı")
 
@@ -87,5 +110,8 @@ def create_app(
         allow_headers=["*"],
     )
     app.include_router(health_router, prefix=API_PREFIX)
+    app.include_router(market_router, prefix=API_PREFIX)
+    app.include_router(predictions_router, prefix=API_PREFIX)
+    app.include_router(calibration_router, prefix=API_PREFIX)
     app.add_api_websocket_route("/ws", ws_endpoint)
     return app

@@ -60,8 +60,8 @@ gen-types: ## OpenAPI → frontend/src/api/types.gen.ts
 	uv run --project backend python -m marketpulse.api.openapi_export > frontend/openapi.json
 	$(NPM) run gen-types
 
-backfill: ## Geçmiş veri çek (Faz 1, F1-13)
-	@echo "backfill Faz 1'de gelir (ROADMAP F1-13)"; exit 1
+backfill: ## Geçmiş mum verisini Binance'ten çeker (ARGS="--days 7" ile sınırlanabilir)
+	uv run --project backend python -m marketpulse.backfill $(ARGS)
 
 backtest: ## Backtest motoru (Faz 7)
 	@echo "backtest Faz 7'de gelir (ROADMAP F7-3)"; exit 1

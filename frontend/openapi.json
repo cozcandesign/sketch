@@ -26,10 +26,662 @@
           }
         }
       }
+    },
+    "/api/v1/symbols": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "List Symbols",
+        "operationId": "list_symbols_api_v1_symbols_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SymbolsOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/{symbol}": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Get Market",
+        "operationId": "get_market_api_v1_market__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketStateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/{symbol}/candles": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Get Candles",
+        "operationId": "get_candles_api_v1_market__symbol__candles_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Interval",
+              "default": "15m"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandlesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/predictions": {
+      "get": {
+        "tags": [
+          "predictions"
+        ],
+        "summary": "List Predictions",
+        "operationId": "list_predictions_api_v1_predictions_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "horizon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Horizon"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Horizon"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "live",
+                    "baseline",
+                    "backtest"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "active",
+                "resolved",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/predictions/{prediction_id}": {
+      "get": {
+        "tags": [
+          "predictions"
+        ],
+        "summary": "Get Prediction",
+        "operationId": "get_prediction_api_v1_predictions__prediction_id__get",
+        "parameters": [
+          {
+            "name": "prediction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Prediction Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calibration": {
+      "get": {
+        "tags": [
+          "calibration"
+        ],
+        "summary": "Get Calibration",
+        "operationId": "get_calibration_api_v1_calibration_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "horizon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Horizon"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Horizon"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "name": "subset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "non_overlapping",
+                "high_confidence"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Subset"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d",
+                "all"
+              ],
+              "type": "string",
+              "default": "30d",
+              "title": "Window"
+            }
+          },
+          {
+            "name": "bins",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 2,
+              "default": 10,
+              "title": "Bins"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CalibrationBinOut": {
+        "properties": {
+          "bin": {
+            "type": "integer",
+            "title": "Bin"
+          },
+          "lower": {
+            "type": "number",
+            "title": "Lower"
+          },
+          "upper": {
+            "type": "number",
+            "title": "Upper"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "mean_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean P"
+          },
+          "observed_freq": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Freq"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bin",
+          "lower",
+          "upper",
+          "n",
+          "mean_p",
+          "observed_freq"
+        ],
+        "title": "CalibrationBinOut"
+      },
+      "CalibrationOut": {
+        "properties": {
+          "subset": {
+            "type": "string",
+            "title": "Subset"
+          },
+          "window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Days"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/SummaryOut"
+          },
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/ModelSummaryOut"
+            },
+            "type": "array",
+            "title": "By Model"
+          },
+          "by_horizon": {
+            "items": {
+              "$ref": "#/components/schemas/HorizonSummaryOut"
+            },
+            "type": "array",
+            "title": "By Horizon"
+          },
+          "bins": {
+            "items": {
+              "$ref": "#/components/schemas/CalibrationBinOut"
+            },
+            "type": "array",
+            "title": "Bins"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DailyPointOut"
+            },
+            "type": "array",
+            "title": "Daily"
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subset",
+          "window_days",
+          "overall",
+          "by_model",
+          "by_horizon",
+          "bins",
+          "daily",
+          "pending"
+        ],
+        "title": "CalibrationOut"
+      },
+      "CandleCoverageOut": {
+        "properties": {
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "last_close_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Close Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interval",
+          "count",
+          "last_close_time"
+        ],
+        "title": "CandleCoverageOut"
+      },
+      "CandleOut": {
+        "properties": {
+          "time": {
+            "type": "integer",
+            "title": "Time"
+          },
+          "open": {
+            "type": "number",
+            "title": "Open"
+          },
+          "high": {
+            "type": "number",
+            "title": "High"
+          },
+          "low": {
+            "type": "number",
+            "title": "Low"
+          },
+          "close": {
+            "type": "number",
+            "title": "Close"
+          },
+          "volume": {
+            "type": "number",
+            "title": "Volume"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "CandleOut",
+        "description": "lightweight-charts biçimi: `time` saniye cinsinden UNIX zamanı (mum açılışı)."
+      },
+      "CandlesOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/CandleOut"
+            },
+            "type": "array",
+            "title": "Candles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "interval",
+          "candles"
+        ],
+        "title": "CandlesOut"
+      },
       "CollectorHealthOut": {
         "properties": {
           "collector": {
@@ -97,6 +749,35 @@
           "consecutive_failures"
         ],
         "title": "CollectorHealthOut"
+      },
+      "DailyPointOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "brier": {
+            "type": "number",
+            "title": "Brier"
+          },
+          "hit_rate": {
+            "type": "number",
+            "title": "Hit Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "n",
+          "brier",
+          "hit_rate"
+        ],
+        "title": "DailyPointOut"
       },
       "DbHealthOut": {
         "properties": {
@@ -168,6 +849,19 @@
         ],
         "title": "EngineHealthOut"
       },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
       "HealthResponse": {
         "properties": {
           "status": {
@@ -206,6 +900,9 @@
           },
           "ws": {
             "$ref": "#/components/schemas/WsHealthOut"
+          },
+          "live_prices": {
+            "$ref": "#/components/schemas/LiveHealthOut"
           }
         },
         "type": "object",
@@ -217,9 +914,329 @@
           "collectors",
           "db",
           "outbox",
-          "ws"
+          "ws",
+          "live_prices"
         ],
         "title": "HealthResponse"
+      },
+      "Horizon": {
+        "type": "string",
+        "enum": [
+          "30m",
+          "1h",
+          "4h",
+          "24h"
+        ],
+        "title": "Horizon",
+        "description": "Tahmin ufku. Değerler API ve DB'de olduğu gibi kullanılır."
+      },
+      "HorizonStateOut": {
+        "properties": {
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "label_tr": {
+            "type": "string",
+            "title": "Label Tr"
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionOut"
+            },
+            "type": "array",
+            "title": "Predictions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "horizon",
+          "label_tr",
+          "predictions"
+        ],
+        "title": "HorizonStateOut"
+      },
+      "HorizonSummaryOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "brier": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier"
+          },
+          "brier_skill": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier Skill"
+          },
+          "base_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Rate"
+          },
+          "hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate"
+          },
+          "hit_ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci Low"
+          },
+          "hit_ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci High"
+          },
+          "beats_uninformed": {
+            "type": "boolean",
+            "title": "Beats Uninformed"
+          },
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "label_tr": {
+            "type": "string",
+            "title": "Label Tr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "brier",
+          "brier_skill",
+          "base_rate",
+          "hit_rate",
+          "hit_ci_low",
+          "hit_ci_high",
+          "beats_uninformed",
+          "horizon",
+          "label_tr"
+        ],
+        "title": "HorizonSummaryOut"
+      },
+      "Interval": {
+        "type": "string",
+        "enum": [
+          "1m",
+          "5m",
+          "15m",
+          "1h",
+          "4h",
+          "1d"
+        ],
+        "title": "Interval",
+        "description": "Mum zaman dilimi. Değerler Binance API'siyle ve DB ile aynı."
+      },
+      "LiveHealthOut": {
+        "properties": {
+          "connected": {
+            "type": "boolean",
+            "title": "Connected"
+          },
+          "last_message_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message At"
+          },
+          "messages": {
+            "type": "integer",
+            "title": "Messages"
+          },
+          "reconnects": {
+            "type": "integer",
+            "title": "Reconnects"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connected",
+          "last_message_at",
+          "messages",
+          "reconnects"
+        ],
+        "title": "LiveHealthOut"
+      },
+      "MarketStateOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "price": {
+            "$ref": "#/components/schemas/PriceOut"
+          },
+          "coverage": {
+            "items": {
+              "$ref": "#/components/schemas/CandleCoverageOut"
+            },
+            "type": "array",
+            "title": "Coverage"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/HorizonStateOut"
+            },
+            "type": "array",
+            "title": "Horizons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "price",
+          "coverage",
+          "horizons"
+        ],
+        "title": "MarketStateOut"
+      },
+      "ModelSummaryOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "brier": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier"
+          },
+          "brier_skill": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier Skill"
+          },
+          "base_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Rate"
+          },
+          "hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate"
+          },
+          "hit_ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci Low"
+          },
+          "hit_ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci High"
+          },
+          "beats_uninformed": {
+            "type": "boolean",
+            "title": "Beats Uninformed"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "label_tr": {
+            "type": "string",
+            "title": "Label Tr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "brier",
+          "brier_skill",
+          "base_rate",
+          "hit_rate",
+          "hit_ci_low",
+          "hit_ci_high",
+          "beats_uninformed",
+          "model_version",
+          "label_tr"
+        ],
+        "title": "ModelSummaryOut"
       },
       "OutboxHealthOut": {
         "properties": {
@@ -258,6 +1275,534 @@
           "lag_seconds"
         ],
         "title": "OutboxHealthOut"
+      },
+      "OutcomeOut": {
+        "properties": {
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Resolved At"
+          },
+          "price_at_target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price At Target"
+          },
+          "realized_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realized Return"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "unresolved"
+            ],
+            "title": "Outcome"
+          },
+          "hit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit"
+          },
+          "brier": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier"
+          },
+          "resolved_by": {
+            "type": "string",
+            "title": "Resolved By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resolved_at",
+          "price_at_target",
+          "realized_return",
+          "outcome",
+          "hit",
+          "brier",
+          "resolved_by"
+        ],
+        "title": "OutcomeOut"
+      },
+      "PredictionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "target_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Target At"
+          },
+          "price_at": {
+            "type": "number",
+            "title": "Price At"
+          },
+          "p_up": {
+            "type": "number",
+            "title": "P Up"
+          },
+          "expected_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Low"
+          },
+          "expected_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected High"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "confidence_label": {
+            "type": "string",
+            "enum": [
+              "low",
+              "mid",
+              "high"
+            ],
+            "title": "Confidence Label"
+          },
+          "conflict": {
+            "type": "boolean",
+            "title": "Conflict"
+          },
+          "veto_active": {
+            "type": "boolean",
+            "title": "Veto Active"
+          },
+          "veto_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Veto Reason"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "live",
+              "baseline",
+              "backtest"
+            ],
+            "title": "Source"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "non_overlapping": {
+            "type": "boolean",
+            "title": "Non Overlapping"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SignalOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "horizon",
+          "as_of",
+          "target_at",
+          "price_at",
+          "p_up",
+          "expected_low",
+          "expected_high",
+          "confidence",
+          "confidence_label",
+          "conflict",
+          "veto_active",
+          "veto_reason",
+          "source",
+          "model_version",
+          "non_overlapping",
+          "report",
+          "outcome"
+        ],
+        "title": "PredictionOut"
+      },
+      "PredictionPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "PredictionPage"
+      },
+      "PriceOut": {
+        "properties": {
+          "last": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last"
+          },
+          "change_24h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change 24H"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "last",
+          "change_24h",
+          "as_of",
+          "stale"
+        ],
+        "title": "PriceOut"
+      },
+      "SignalOut": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "coverage": {
+            "type": "number",
+            "title": "Coverage"
+          },
+          "components": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Components"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "module",
+          "score",
+          "confidence",
+          "coverage",
+          "components",
+          "rationale"
+        ],
+        "title": "SignalOut"
+      },
+      "SummaryOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "brier": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier"
+          },
+          "brier_skill": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier Skill"
+          },
+          "base_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Rate"
+          },
+          "hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate"
+          },
+          "hit_ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci Low"
+          },
+          "hit_ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci High"
+          },
+          "beats_uninformed": {
+            "type": "boolean",
+            "title": "Beats Uninformed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "brier",
+          "brier_skill",
+          "base_rate",
+          "hit_rate",
+          "hit_ci_low",
+          "hit_ci_high",
+          "beats_uninformed"
+        ],
+        "title": "SummaryOut"
+      },
+      "SymbolsOut": {
+        "properties": {
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbols",
+          "timezone"
+        ],
+        "title": "SymbolsOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       },
       "WsHealthOut": {
         "properties": {

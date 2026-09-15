@@ -64,6 +64,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PLR0913", "PLR2004"]
+# FastAPI uçlarında parametreler sorgu parametresidir; sayıları tasarım kokusu değildir.
+"src/marketpulse/api/routers/**" = ["PLR0917"]
 "alembic/versions/**" = ["E501", "I001", "W291", "Q000"]
 
 [tool.mypy]

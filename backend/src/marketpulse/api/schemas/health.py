@@ -48,6 +48,15 @@ class WsHealthOut(BaseModel):
     clients: int
 
 
+class LiveHealthOut(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    connected: bool
+    last_message_at: datetime | None
+    messages: int
+    reconnects: int
+
+
 class HealthResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -59,3 +68,4 @@ class HealthResponse(BaseModel):
     db: DbHealthOut
     outbox: OutboxHealthOut
     ws: WsHealthOut
+    live_prices: LiveHealthOut

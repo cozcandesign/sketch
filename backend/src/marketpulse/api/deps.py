@@ -2,6 +2,7 @@
 
 from fastapi import Request
 
+from marketpulse.api.live_relay import LiveState
 from marketpulse.api.outbox_relay import RelayState
 from marketpulse.api.ws import WsHub
 from marketpulse.config import Settings
@@ -31,4 +32,9 @@ def get_hub(request: Request) -> WsHub:
 
 def get_relay_state(request: Request) -> RelayState:
     state: RelayState = request.app.state.relay_state
+    return state
+
+
+def get_live_state(request: Request) -> LiveState:
+    state: LiveState = request.app.state.live_state
     return state
