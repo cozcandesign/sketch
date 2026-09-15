@@ -140,7 +140,7 @@ Kök: `backend/src/marketpulse/`
 
 Bağımlılık yönü tek yönlüdür: `api` ve `engine` her şeye bağlanabilir; `signals` yalnızca `features` ve
 `core`'a; `features` yalnızca `storage`'a. `signals` paketinden `storage` import edilmesi lint kuralıyla
-yasaktır (ruff `banned-api`).
+yasaktır (`import-linter`, `pyproject.toml [tool.importlinter]`).
 
 ---
 

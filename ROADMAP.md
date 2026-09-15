@@ -19,12 +19,12 @@ Tahmini oturum sayıları kabaca bir Claude Code oturumu = birkaç saatlik odakl
 arayüz "bağlı" diyor.
 
 Görevler
-- [ ] F0-1 `backend/pyproject.toml` (uv, Python 3.12), bağımlılıklar: fastapi, uvicorn, pydantic v2,
+- [x] F0-1 `backend/pyproject.toml` (uv, Python 3.12), bağımlılıklar: fastapi, uvicorn, pydantic v2,
       pydantic-settings, sqlalchemy 2, aiosqlite, alembic, httpx, websockets, pandas, numpy, loguru,
       anthropic, feedparser, yfinance, pyyaml. Dev: pytest, pytest-asyncio, respx, hypothesis, time-machine,
       ruff, mypy, pandas-stubs, honcho, pre-commit.
-- [ ] F0-2 `ruff`, `mypy --strict`, `pytest` yapılandırması; `signals → storage` import yasağı (ruff banned-api).
-- [ ] F0-3 `config.py` (pydantic-settings, `MP_` ön eki), `.env.example`, `core/` (Horizon, Symbol, Clock,
+- [x] F0-2 `ruff`, `mypy --strict`, `pytest` yapılandırması; `signals → storage` import yasağı (import-linter sözleşmesi).
+- [x] F0-3 `config.py` (pydantic-settings, `MP_` ön eki), `.env.example`, `core/` (Horizon, Symbol, Clock,
       FakeClock, utc_now, floor_to_minute, hata sınıfları) + testleri.
 - [ ] F0-4 `storage/`: DB bağlantısı (WAL, busy_timeout), `tables.py` (tüm §6 tabloları), Alembic ilk migration,
       `Repository` protokolü ve `SqliteRepository` iskeleti, `Outbox` yazıcı/okuyucu + testleri.
@@ -36,7 +36,7 @@ Görevler
 - [ ] F0-8 `make gen-types` (openapi-typescript) ve ilk `types.gen.ts`.
 - [ ] F0-9 `Makefile` (tüm hedefler), `Procfile.dev`, `docker-compose.yml`, iki Dockerfile, `nginx.conf`,
       `.gitignore`, `.dockerignore`, `pre-commit` (ruff, mypy, eslint).
-- [ ] F0-10 `reporting/banned_words.py` + `templates.py` ve `i18n/tr.ts`'i tarayan test (liste boşken de
+- [x] F0-10 `reporting/banned_words.py` + `templates.py` ve `i18n/tr.ts`'i tarayan test (liste boşken de
       koşar).
 
 Bitti sayılır
