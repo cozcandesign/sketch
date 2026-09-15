@@ -35,7 +35,6 @@ dev = [
     "mypy>=1.11",
     "pandas-stubs",
     "types-PyYAML",
-    "honcho>=2",
     "pre-commit>=3",
     "import-linter>=2",
 ]
@@ -66,6 +65,8 @@ ignore = [
 "tests/**" = ["PLR0913", "PLR2004"]
 # FastAPI uçlarında parametreler sorgu parametresidir; sayıları tasarım kokusu değildir.
 "src/marketpulse/api/routers/**" = ["PLR0917"]
+# Geliştirme çalıştırıcısı bir terminal aracıdır: çıktısı kullanıcı arayüzüdür, loguru değil print kullanır.
+"src/marketpulse/devtools/**" = ["T201"]
 "alembic/versions/**" = ["E501", "I001", "W291", "Q000"]
 
 [tool.mypy]
@@ -77,7 +78,7 @@ mypy_path = "src"
 packages = ["marketpulse"]
 
 [[tool.mypy.overrides]]
-module = ["feedparser.*", "yfinance.*", "honcho.*"]
+module = ["feedparser.*", "yfinance.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

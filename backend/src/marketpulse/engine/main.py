@@ -23,6 +23,7 @@ from marketpulse.core.errors import EngineAlreadyRunningError
 from marketpulse.core.logging import configure_logging
 from marketpulse.core.time import floor_to_minute
 from marketpulse.core.types import Horizon, Interval
+from marketpulse.core.version import git_sha
 from marketpulse.engine.health import HealthRegistry
 from marketpulse.engine.jobs import Job, run_jobs
 from marketpulse.engine.predict import run_baseline_predictions
@@ -202,7 +203,12 @@ async def run(
             tasks.append(
                 asyncio.create_task(_startup_tasks(client, limiter, klines, health), name="startup")
             )
-        log.info("engine başladı (sürüm {v}, semboller {s})", v=__version__, s=symbols)
+        log.info(
+            "engine başladı (sürüm {v}, commit {sha}, semboller {s})",
+            v=__version__,
+            sha=git_sha(),
+            s=symbols,
+        )
         await stop.wait()
         log.info("kapanış sinyali alındı; görevler kapatılıyor")
         for task in tasks:

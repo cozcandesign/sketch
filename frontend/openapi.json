@@ -468,6 +468,26 @@
   },
   "components": {
     "schemas": {
+      "BuildInfoOut": {
+        "properties": {
+          "git_sha": {
+            "type": "string",
+            "title": "Git Sha"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "git_sha",
+          "started_at"
+        ],
+        "title": "BuildInfoOut",
+        "description": "Çalışan kodun kimliği. Arayüz bunu kendi build'iyle karşılaştırır."
+      },
       "CalibrationBinOut": {
         "properties": {
           "bin": {
@@ -903,6 +923,9 @@
           },
           "live_prices": {
             "$ref": "#/components/schemas/LiveHealthOut"
+          },
+          "build": {
+            "$ref": "#/components/schemas/BuildInfoOut"
           }
         },
         "type": "object",
@@ -915,7 +938,8 @@
           "db",
           "outbox",
           "ws",
-          "live_prices"
+          "live_prices",
+          "build"
         ],
         "title": "HealthResponse"
       },

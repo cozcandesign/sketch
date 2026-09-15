@@ -106,8 +106,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 ```
 .
 ├── CLAUDE.md  ARCHITECTURE.md  ROADMAP.md
-├── Makefile                      # dev / up / down / test / lint / typecheck / check / migrate / backfill / backtest / gen-types
-├── Procfile.dev                  # make dev için: api, engine, frontend
+├── Makefile                      # dev / dev-stop / up / down / test / lint / typecheck / check / migrate / backfill / backtest / gen-types
 ├── docker-compose.yml
 ├── .env.example
 ├── data/                         # SQLite dosyası (git'e girmez)
@@ -131,6 +130,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 │   │   ├── alerts/               # rules.py, evaluator.py
 │   │   ├── llm/                  # client.py, tier1.py (Haiku), tier2.py (Sonnet), router.py, budget.py, dedup.py
 │   │   ├── backtest/             # engine.py, report.py, cli.py
+│   │   ├── devtools/             # runner.py (make dev), procs.py — geliştirme aracı, üretim yolunda değil
 │   │   ├── engine/               # jobs.py, supervisor.py, ratelimit.py, main.py  → süreç: python -m marketpulse.engine
 │   │   └── api/                  # app.py, routers/ (predictions, market, signals, news, calibration, alerts, config, costs, health), ws.py, live_relay.py, schemas/
 │   └── tests/
@@ -245,7 +245,8 @@ Ayrıntı: `ARCHITECTURE.md`.
 | Komut | Ne yapar |
 |---|---|
 | `make install` | `uv sync` (backend) + `npm install` (frontend) |
-| `make dev` | api (auto-reload), engine ve Vite dev server'ı birlikte başlatır (`honcho start -f Procfile.dev`); `.env` şart |
+| `make dev` | api (auto-reload), engine ve Vite dev server'ını **bağımsız süreçler** olarak başlatır; çöken süreç kendiliğinden yeniden başlar, diğerleri ayakta kalır; `.env` şart |
+| `make dev-stop` | Arka planda kalmış geliştirme süreçlerini durdurur |
 | `make up` / `make down` | `docker compose up -d --build` / `docker compose down` |
 | `make logs` | compose loglarını takip eder |
 | `make test` | backend pytest + frontend vitest (`make test-backend`, `make test-frontend` ayrı ayrı) |

@@ -42,6 +42,7 @@ const health: HealthResponse = {
     messages: 42,
     reconnects: 0,
   },
+  build: { git_sha: 'abc1234', started_at: '2026-01-01T11:00:00Z' },
 }
 
 function mockFetch(body: unknown, ok = true) {
@@ -83,6 +84,6 @@ describe('DataStatusStrip', () => {
         <DataStatusStrip />
       </Providers>,
     )
-    expect(await screen.findByText(/Henüz collector yok/)).toBeInTheDocument()
+    expect(await screen.findByText(/Collector bilgisi bekleniyor/)).toBeInTheDocument()
   })
 })

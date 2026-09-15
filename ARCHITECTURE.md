@@ -1062,9 +1062,23 @@ services:
   api ve engine için kullanılır. Migration'ları api açılışta koşar (`create_app` lifespan); engine şemayı
   60 sn bekler, hazır olmazsa kendisi koşar.
 - `frontend/Dockerfile`: `node:22-alpine` build → `nginx:1.27-alpine`; `nginx.conf` `/api` ve `/ws` proxy.
-- `make dev`: `uv run --project backend honcho start -f Procfile.dev` → `api` (uvicorn `--factory --reload`),
-  `engine`, `web` (Vite dev server, **3000**, proxy ile). Tek `Ctrl+C` hepsini kapatır. Süreçler depo kökünden
-  çalışır; `.env` ve `./data` kökte kalır.
+- `make dev`: `backend/.venv/bin/python -m marketpulse.devtools.runner` → `api` (uvicorn
+  `--factory --reload`), `engine`, `web` (Vite dev server, **3000**, proxy ile). Üç süreç
+  **birbirinden bağımsızdır**: biri çökerse diğerleri çalışmaya devam eder ve çöken süreç üstel
+  backoff ile (1, 2, 4 … en fazla 30 sn) kendiliğinden yeniden başlar; 60 saniyeden uzun sağlıklı
+  çalışma sayacı sıfırlar. Tek `Ctrl+C` hepsini düzgün kapatır. Süreçler depo kökünden çalışır;
+  `.env` ve `./data` kökte kalır.
+- **Ortam senkronu başlamadan önce bir kez yapılır** (`make ensure-deps` → `uv sync`). Süreçler doğrudan
+  `backend/.venv/bin/python` ile başlatılır; hiçbir süreç açılışta ortamı senkronlamaz. Gerekçe: üç süreç
+  aynı anda `uv run` çağırırsa her biri ortamı senkronlamaya kalkar ve paket yeniden kurulurken başlayan
+  süreç `No module named 'marketpulse'` hatasıyla düşebilir.
+- `make dev` başlarken bu depoya ait **eski süreçleri** bulur ve durdurur (`ps` çıktısındaki komut satırı
+  imzasıyla). Yabancı bir program 8000 veya 3000 portunu tutuyorsa süreç öldürülmez; hangi portu kimin
+  tuttuğu yazılır ve başlatma durur. `make dev-stop` yalnızca temizlik yapar.
+- **Sürüm görünürlüğü:** çalışan commit `MP_GIT_SHA` ile süreçlere geçer, `/health` içinde `build.git_sha`
+  olarak sunulur ve arayüzün alt şeridinde görünür. Arayüzün build commit'i ile API'nin commit'i
+  farklıysa şeritte "sürüm uyuşmuyor" uyarısı çıkar — eski bir sekmeye ya da eski bir sunucuya bakmak
+  böylece fark edilir.
 - İlk kurulum: `cp .env.example .env` → anahtarları doldur → `docker compose up --build` →
   `http://localhost:3000`. Geliştirme için `make install` sonra `make dev`. İlk veri için `make backfill`
   (Faz 1'den itibaren).

@@ -1,5 +1,7 @@
 # Aşama 1: Vite build
 FROM node:22-alpine AS build
+ARG VITE_GIT_SHA=bilinmiyor
+ENV VITE_GIT_SHA=$VITE_GIT_SHA
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

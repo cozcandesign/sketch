@@ -23,7 +23,7 @@ export const tr = {
     engineUnknown: 'engine durumu bilinmiyor',
     lastUpdate: 'son güncelleme',
     never: 'hiç',
-    noCollectors: 'Henüz collector yok (Faz 1 ile gelir).',
+    noCollectors: 'Collector bilgisi bekleniyor…',
     livePrices: 'canlı fiyat',
     health: {
       ok: 'çalışıyor',
@@ -132,6 +132,11 @@ export const tr = {
     retry: 'yeniden dene',
     version: 'sürüm',
     none: '—',
+    commit: 'commit',
+    ui: 'arayüz',
+    versionMismatch: 'sürüm uyuşmuyor',
+    versionMismatchHint:
+      'Arayüz ile API farklı commit çalıştırıyor. Sayfayı yenileyin; sürmesi halinde eski bir süreç arka planda çalışıyor olabilir (make dev-stop).',
   },
 } as const
 

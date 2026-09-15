@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from marketpulse import __version__
 from marketpulse.api.deps import (
@@ -16,6 +16,7 @@ from marketpulse.api.deps import (
 from marketpulse.api.live_relay import LiveState
 from marketpulse.api.outbox_relay import RelayState
 from marketpulse.api.schemas.health import (
+    BuildInfoOut,
     CollectorHealthOut,
     DbHealthOut,
     EngineHealthOut,
@@ -27,6 +28,7 @@ from marketpulse.api.schemas.health import (
 from marketpulse.api.ws import WsHub
 from marketpulse.config import Settings
 from marketpulse.core.clock import Clock
+from marketpulse.core.version import git_sha
 from marketpulse.storage.repository import Repository
 
 router = APIRouter(tags=["health"])
@@ -34,6 +36,7 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health", response_model=HealthResponse)
 async def get_health(
+    request: Request,
     repo: Annotated[Repository, Depends(get_repo)],
     clock: Annotated[Clock, Depends(get_clock)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -70,6 +73,7 @@ async def get_health(
             last_id=relay.last_id, last_event_at=relay.last_event_at, lag_seconds=relay.lag_seconds
         ),
         ws=WsHealthOut(clients=hub.client_count),
+        build=BuildInfoOut(git_sha=git_sha(), started_at=request.app.state.started_at),
         live_prices=LiveHealthOut(
             connected=live.connected,
             last_message_at=live.last_message_at,

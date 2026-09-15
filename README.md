@@ -156,9 +156,17 @@ make dev         # api + engine + arayüz, hepsi birlikte
 `make dev` de arayüzü **http://localhost:3000** adresinde açar. Durdurmak için `Control + C`.
 Eksik bağımlılık varsa `make dev` bunları kendisi kurar.
 
+Üç süreç birbirinden bağımsızdır: biri çökerse diğerleri ayakta kalır ve çöken süreç kendiliğinden
+yeniden başlar. Arka planda kalmış bir oturum varsa `make dev` onu bulup durdurur; elle durdurmak için
+`make dev-stop`.
+
+Ekranın altındaki şeritte hem arayüzün hem API'nin commit'i yazar. İkisi farklıysa "sürüm uyuşmuyor"
+uyarısı çıkar; bu, eski bir sekmeye veya arka planda kalmış eski bir sunucuya baktığınız anlamına gelir.
+
 | Komut | Ne yapar |
 |---|---|
 | `make check` | Tüm kontroller: stil, tip, testler. Kod değişikliğinden sonra bu yeşil olmalı. |
+| `make dev-stop` | Arka planda kalmış geliştirme süreçlerini durdurur |
 | `make test` | Sadece testler |
 | `make migrate` | Veritabanı şemasını günceller |
 | `make gen-types` | Arayüzün kullandığı API tiplerini yeniden üretir |

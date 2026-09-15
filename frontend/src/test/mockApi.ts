@@ -52,6 +52,7 @@ export const health: HealthResponse = {
     messages: 10,
     reconnects: 0,
   },
+  build: { git_sha: 'abc1234', started_at: '2026-01-01T11:00:00Z' },
 }
 
 export const marketState: MarketState = {

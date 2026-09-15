@@ -127,6 +127,19 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /**
+     * BuildInfoOut
+     * @description Çalışan kodun kimliği. Arayüz bunu kendi build'iyle karşılaştırır.
+     */
+    BuildInfoOut: {
+      /** Git Sha */
+      git_sha: string
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string
+    }
     /** CalibrationBinOut */
     CalibrationBinOut: {
       /** Bin */
@@ -270,6 +283,7 @@ export interface components {
       outbox: components['schemas']['OutboxHealthOut']
       ws: components['schemas']['WsHealthOut']
       live_prices: components['schemas']['LiveHealthOut']
+      build: components['schemas']['BuildInfoOut']
     }
     /**
      * Horizon

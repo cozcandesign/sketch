@@ -8,6 +8,7 @@ services:
     environment:
       MP_DATA_DIR: /app/data
       MP_DB_URL: sqlite+aiosqlite:////app/data/marketpulse.db
+      MP_GIT_SHA: ${MP_GIT_SHA:-bilinmiyor}
     volumes:
       - ./data:/app/data
     ports:
@@ -27,6 +28,7 @@ services:
     environment:
       MP_DATA_DIR: /app/data
       MP_DB_URL: sqlite+aiosqlite:////app/data/marketpulse.db
+      MP_GIT_SHA: ${MP_GIT_SHA:-bilinmiyor}
     volumes:
       - ./data:/app/data
     depends_on:
@@ -35,7 +37,10 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_GIT_SHA: ${MP_GIT_SHA:-bilinmiyor}
     ports:
       - "3000:80"
     depends_on:

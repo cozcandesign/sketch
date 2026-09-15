@@ -48,6 +48,15 @@ class WsHealthOut(BaseModel):
     clients: int
 
 
+class BuildInfoOut(BaseModel):
+    """Çalışan kodun kimliği. Arayüz bunu kendi build'iyle karşılaştırır."""
+
+    model_config = ConfigDict(frozen=True)
+
+    git_sha: str
+    started_at: datetime
+
+
 class LiveHealthOut(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -69,3 +78,4 @@ class HealthResponse(BaseModel):
     outbox: OutboxHealthOut
     ws: WsHealthOut
     live_prices: LiveHealthOut
+    build: BuildInfoOut

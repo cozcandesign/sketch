@@ -24,6 +24,7 @@ from marketpulse.collectors.ws_stream import ConnectFactory, binance_connect
 from marketpulse.config import Settings, load_settings
 from marketpulse.core.clock import Clock, SystemClock
 from marketpulse.core.logging import configure_logging
+from marketpulse.core.version import git_sha
 from marketpulse.storage import SqliteRepository, make_engine
 from marketpulse.storage.migrate import run_migrations
 
@@ -83,7 +84,10 @@ def create_app(
         app.state.hub = hub
         app.state.relay_state = relay_state
         app.state.live_state = live_state
-        logger.bind(process="api").info("api başladı (sürüm {v})", v=__version__)
+        app.state.started_at = resolved_clock.now()
+        logger.bind(process="api").info(
+            "api başladı (sürüm {v}, commit {sha})", v=__version__, sha=git_sha()
+        )
         try:
             yield
         finally:
