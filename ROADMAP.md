@@ -26,7 +26,7 @@ Görevler
 - [x] F0-2 `ruff`, `mypy --strict`, `pytest` yapılandırması; `signals → storage` import yasağı (import-linter sözleşmesi).
 - [x] F0-3 `config.py` (pydantic-settings, `MP_` ön eki), `.env.example`, `core/` (Horizon, Symbol, Clock,
       FakeClock, utc_now, floor_to_minute, hata sınıfları) + testleri.
-- [ ] F0-4 `storage/`: DB bağlantısı (WAL, busy_timeout), `tables.py` (tüm §6 tabloları), Alembic ilk migration,
+- [x] F0-4 `storage/`: DB bağlantısı (WAL, busy_timeout), `tables.py` (tüm §6 tabloları), Alembic ilk migration,
       `Repository` protokolü ve `SqliteRepository` iskeleti, `Outbox` yazıcı/okuyucu + testleri.
 - [ ] F0-5 `engine/main.py`: supervisor, heartbeat işi, `SIGTERM` ile temiz kapanış, çift örnek koruması.
 - [ ] F0-6 `api/app.py`: FastAPI, CORS, `/api/v1/health`, `/ws` (subscribe/ping/pong), outbox relay görevi.
