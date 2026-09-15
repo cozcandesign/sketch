@@ -39,11 +39,13 @@ def make_heartbeat(
     clock: Clock,
     version: str,
 ) -> Callable[[], Awaitable[None]]:
-    """Heartbeat işi: `engine_heartbeat` satırını ve sağlık tablosunu tazeler."""
+    """Heartbeat işi: `engine_heartbeat` satırını ve collector sağlık tablosunu tazeler.
+
+    Engine kendisi collector değildir; canlılığı heartbeat satırından okunur (health endpoint).
+    """
 
     async def _beat() -> None:
         await repo.write_heartbeat(clock.now(), version)
-        health.record_success("engine")
         await health.flush(repo, outbox)
 
     return _beat

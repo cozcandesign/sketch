@@ -6,11 +6,13 @@ from typing import Any
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+# busy_timeout ilk sırada: sonraki PRAGMA'lar (özellikle journal_mode) anlık kilitte
+# hata vermek yerine bekler.
 SQLITE_PRAGMAS: tuple[str, ...] = (
+    "PRAGMA busy_timeout=5000",
     "PRAGMA journal_mode=WAL",
     "PRAGMA synchronous=NORMAL",
     "PRAGMA foreign_keys=ON",
-    "PRAGMA busy_timeout=5000",
 )
 
 _SQLITE_PREFIX = "sqlite+aiosqlite:///"

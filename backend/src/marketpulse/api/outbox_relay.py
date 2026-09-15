@@ -1,6 +1,7 @@
 """Outbox → WebSocket relay (ARCHITECTURE.md §2). Api sürecinde arka plan görevi."""
 
 import asyncio
+import contextlib
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -39,6 +40,10 @@ class RelayState:
     last_event_at: datetime | None = None
     lag_seconds: float | None = None
     relayed: int = 0
+    errors: int = 0
+
+
+RETRY_DELAY_SEC = 1.0
 
 
 async def run_outbox_relay(
@@ -49,18 +54,45 @@ async def run_outbox_relay(
     stop: asyncio.Event,
     *,
     poll_interval: float = 0.5,
+    start_after: int | None = None,
 ) -> None:
-    """Yeni outbox olaylarını WS konularına çevirip yayınlar. `stop` ile biter."""
+    """Yeni outbox olaylarını WS konularına çevirip yayınlar. `stop` ile biter.
+
+    `start_after=None`: başlangıçtaki en büyük id'den sonrası yayınlanır (geçmiş tekrar edilmez).
+    DB hatası (ör. geçici kilit) relay'i öldürmez: loglanır, kısa bekleme sonrası kaldığı
+    id'den devam eder.
+    """
     outbox = Outbox(repo, clock)
-    state.last_id = await repo.outbox_max_id()
-    async for event in outbox.tail(stop, poll_interval=poll_interval, start_after=state.last_id):
-        now = clock.now()
-        state.last_id = event.id
-        state.last_event_at = now
-        state.lag_seconds = max(0.0, (now - event.created_at).total_seconds())
-        state.relayed += 1
-        topic = ws_topic_for(event)
+    while not stop.is_set():
         try:
-            await hub.broadcast(topic, event.payload, now)
-        except Exception as exc:  # tek olayın hatası relay'i durdurmaz
-            logger.warning("relay yayın hatası ({topic}): {err}", topic=topic, err=repr(exc))
+            if start_after is None:
+                state.last_id = await repo.outbox_max_id()
+                start_after = state.last_id
+            async for event in outbox.tail(
+                stop, poll_interval=poll_interval, start_after=start_after
+            ):
+                await _relay_one(event, hub, clock, state)
+                start_after = event.id
+            return
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            state.errors += 1
+            logger.warning(
+                "relay hatası, {d:.0f} sn sonra devam: {err}", d=RETRY_DELAY_SEC, err=repr(exc)
+            )
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(stop.wait(), timeout=RETRY_DELAY_SEC)
+
+
+async def _relay_one(event: OutboxEvent, hub: WsHub, clock: Clock, state: RelayState) -> None:
+    now = clock.now()
+    state.last_id = event.id
+    state.last_event_at = now
+    state.lag_seconds = max(0.0, (now - event.created_at).total_seconds())
+    state.relayed += 1
+    topic = ws_topic_for(event)
+    try:
+        await hub.broadcast(topic, event.payload, now)
+    except Exception as exc:  # tek olayın hatası relay'i durdurmaz
+        logger.warning("relay yayın hatası ({topic}): {err}", topic=topic, err=repr(exc))

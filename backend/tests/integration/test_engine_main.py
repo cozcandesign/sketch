@@ -53,11 +53,9 @@ async def test_run_writes_heartbeat_then_clears_on_stop(tmp_path: Path) -> None:
     heartbeat = await repo.read_heartbeat()
     assert heartbeat is not None
     assert heartbeat.ts == clock.now()
-    health = await repo.list_collector_health()
-    assert [h.collector for h in health] == ["engine"]
-    assert health[0].status == "ok"
-    events = await repo.outbox_read_after(0)
-    assert [e.topic for e in events] == ["health.changed"]
+    # Engine kendisi collector değildir: Faz 0'da sağlık tablosu ve outbox boş kalır.
+    assert await repo.list_collector_health() == []
+    assert await repo.outbox_read_after(0) == []
     stop.set()
     await asyncio.wait_for(task, timeout=5)
     assert await repo.read_heartbeat() is None  # temiz kapanış heartbeat'i siler

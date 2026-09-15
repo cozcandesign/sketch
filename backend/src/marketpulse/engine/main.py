@@ -70,7 +70,6 @@ async def run(
                 loop.add_signal_handler(sig, stop.set)
 
         health = HealthRegistry(clock)
-        health.register("engine")
         outbox = Outbox(repo, clock)
         heartbeat = make_heartbeat(repo, health, outbox, clock, __version__)
         tasks = [

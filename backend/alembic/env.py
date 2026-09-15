@@ -54,6 +54,11 @@ def run_migrations_online() -> None:
     section["sqlalchemy.url"] = _resolve_url()
     connectable = engine_from_config(section, prefix="sqlalchemy.", poolclass=pool.NullPool)
     with connectable.connect() as connection:
+        if connection.dialect.name == "sqlite":
+            # Uygulama ile aynı mod: WAL'a geçiş burada, eşzamanlı bağlantı yokken yapılır.
+            connection.exec_driver_sql("PRAGMA busy_timeout=5000")
+            connection.exec_driver_sql("PRAGMA journal_mode=WAL")
+            connection.commit()  # autobegin'i kapat; alembic kendi transaction'ını yönetsin
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
