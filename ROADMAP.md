@@ -28,7 +28,7 @@ Görevler
       FakeClock, utc_now, floor_to_minute, hata sınıfları) + testleri.
 - [x] F0-4 `storage/`: DB bağlantısı (WAL, busy_timeout), `tables.py` (tüm §6 tabloları), Alembic ilk migration,
       `Repository` protokolü ve `SqliteRepository` iskeleti, `Outbox` yazıcı/okuyucu + testleri.
-- [ ] F0-5 `engine/main.py`: supervisor, heartbeat işi, `SIGTERM` ile temiz kapanış, çift örnek koruması.
+- [x] F0-5 `engine/main.py`: supervisor, heartbeat işi, `SIGTERM` ile temiz kapanış, çift örnek koruması.
 - [ ] F0-6 `api/app.py`: FastAPI, CORS, `/api/v1/health`, `/ws` (subscribe/ping/pong), outbox relay görevi.
 - [ ] F0-7 Frontend iskeleti: Vite + React + TS strict + Tailwind, `tokens.css` koyu tema, `Shell`
       (Sidebar / Topbar / **DataStatusStrip** her ekranın üstünde / StatusBar), 7 boş rota (Dashboard, Coin,
