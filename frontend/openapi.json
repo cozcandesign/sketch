@@ -1,0 +1,277 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MarketPulse API",
+    "description": "Yön olasılığı ve piyasa durumu. İşlem yapmaz.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Get Health",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CollectorHealthOut": {
+        "properties": {
+          "collector": {
+            "type": "string",
+            "title": "Collector"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded",
+              "down",
+              "disabled",
+              "budget_exhausted"
+            ],
+            "title": "Status"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "consecutive_failures": {
+            "type": "integer",
+            "title": "Consecutive Failures"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collector",
+          "status",
+          "last_success_at",
+          "last_error_at",
+          "last_error",
+          "consecutive_failures"
+        ],
+        "title": "CollectorHealthOut"
+      },
+      "DbHealthOut": {
+        "properties": {
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "size_bytes"
+        ],
+        "title": "DbHealthOut"
+      },
+      "EngineHealthOut": {
+        "properties": {
+          "alive": {
+            "type": "boolean",
+            "title": "Alive"
+          },
+          "last_heartbeat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat"
+          },
+          "age_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Seconds"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alive",
+          "last_heartbeat",
+          "age_seconds",
+          "version"
+        ],
+        "title": "EngineHealthOut"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded",
+              "down"
+            ],
+            "title": "Status"
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Server Time"
+          },
+          "api_version": {
+            "type": "string",
+            "title": "Api Version"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/EngineHealthOut"
+          },
+          "collectors": {
+            "items": {
+              "$ref": "#/components/schemas/CollectorHealthOut"
+            },
+            "type": "array",
+            "title": "Collectors"
+          },
+          "db": {
+            "$ref": "#/components/schemas/DbHealthOut"
+          },
+          "outbox": {
+            "$ref": "#/components/schemas/OutboxHealthOut"
+          },
+          "ws": {
+            "$ref": "#/components/schemas/WsHealthOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "server_time",
+          "api_version",
+          "engine",
+          "collectors",
+          "db",
+          "outbox",
+          "ws"
+        ],
+        "title": "HealthResponse"
+      },
+      "OutboxHealthOut": {
+        "properties": {
+          "last_id": {
+            "type": "integer",
+            "title": "Last Id"
+          },
+          "last_event_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Event At"
+          },
+          "lag_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lag Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "last_id",
+          "last_event_at",
+          "lag_seconds"
+        ],
+        "title": "OutboxHealthOut"
+      },
+      "WsHealthOut": {
+        "properties": {
+          "clients": {
+            "type": "integer",
+            "title": "Clients"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clients"
+        ],
+        "title": "WsHealthOut"
+      }
+    }
+  }
+}

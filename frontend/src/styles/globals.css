@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--mp-bg);
+  color: var(--mp-text);
+  font-family: var(--mp-font-sans);
+  font-size: var(--mp-text-base);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sayısal değerler: mono ve tablo hizalı (CLAUDE.md §7) */
+.num {
+  font-family: var(--mp-font-mono);
+  font-variant-numeric: tabular-nums;
+}

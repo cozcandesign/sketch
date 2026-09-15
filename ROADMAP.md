@@ -30,10 +30,10 @@ Görevler
       `Repository` protokolü ve `SqliteRepository` iskeleti, `Outbox` yazıcı/okuyucu + testleri.
 - [x] F0-5 `engine/main.py`: supervisor, heartbeat işi, `SIGTERM` ile temiz kapanış, çift örnek koruması.
 - [x] F0-6 `api/app.py`: FastAPI, CORS, `/api/v1/health`, `/ws` (subscribe/ping/pong), outbox relay görevi.
-- [ ] F0-7 Frontend iskeleti: Vite + React + TS strict + Tailwind, `tokens.css` koyu tema, `Shell`
+- [x] F0-7 Frontend iskeleti: Vite + React + TS strict + Tailwind, `tokens.css` koyu tema, `Shell`
       (Sidebar / Topbar / **DataStatusStrip** her ekranın üstünde / StatusBar), 7 boş rota (Dashboard, Coin,
       Haber, Tahminler, Kalibrasyon, Ayarlar, Maliyet), `WsClient`, `i18n/tr.ts`, eslint/prettier/vitest.
-- [ ] F0-8 `make gen-types` (openapi-typescript) ve ilk `types.gen.ts`.
+- [x] F0-8 `make gen-types` (openapi-typescript) ve ilk `types.gen.ts`.
 - [ ] F0-9 `Makefile` (tüm hedefler), `Procfile.dev`, `docker-compose.yml`, iki Dockerfile, `nginx.conf`,
       `.gitignore`, `.dockerignore`, `pre-commit` (ruff, mypy, eslint).
 - [x] F0-10 `reporting/banned_words.py` + `templates.py` ve `i18n/tr.ts`'i tarayan test (liste boşken de

@@ -41,6 +41,6 @@ export const tr = {
     retry: 'yeniden dene',
     version: 'sürüm',
   },
-} as const;
+} as const
 
-export type Tr = typeof tr;
+export type Tr = typeof tr

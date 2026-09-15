@@ -1,0 +1,72 @@
+/*
+  Tasarım token'ları. Görünümü değiştirmek için yalnızca bu dosyayı düzenleyin (CLAUDE.md §7).
+  Ham token'lar `--mp-*`; Tailwind sınıfları (bg-surface, text-muted, text-up ...) @theme ile bunlara bağlanır.
+  Koyu tema varsayılan; açık tema seti tanımlı ama öncelik değil.
+*/
+:root {
+  color-scheme: dark;
+  --mp-bg: #0b0e13;
+  --mp-surface: #11151c;
+  --mp-surface-2: #171c25;
+  --mp-border: #242a35;
+  --mp-text: #d7dce4;
+  --mp-text-muted: #7f8896;
+  --mp-up: #2fbf71;
+  --mp-down: #e5484d;
+  --mp-neutral: #8b93a1;
+  --mp-warn: #e6a23c;
+  --mp-critical: #ff5c5c;
+  --mp-info: #5aa9e6;
+  --mp-accent: #4f8cff;
+  --mp-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mp-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --mp-text-xs: 11px;
+  --mp-text-sm: 12.5px;
+  --mp-text-base: 13.5px;
+  --mp-text-lg: 16px;
+  --mp-row-h: 28px;
+  --mp-radius: 4px;
+  --mp-sidebar-w: 168px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --mp-bg: #f5f6f8;
+  --mp-surface: #ffffff;
+  --mp-surface-2: #eef0f3;
+  --mp-border: #d9dde3;
+  --mp-text: #171a1f;
+  --mp-text-muted: #5b6370;
+  --mp-up: #1a9c56;
+  --mp-down: #c9353b;
+  --mp-neutral: #6b7380;
+  --mp-warn: #b9781c;
+  --mp-critical: #d6323a;
+  --mp-info: #2b7bc4;
+  --mp-accent: #2f6fe0;
+}
+
+@theme inline {
+  --color-bg: var(--mp-bg);
+  --color-surface: var(--mp-surface);
+  --color-surface-2: var(--mp-surface-2);
+  --color-border: var(--mp-border);
+  --color-text: var(--mp-text);
+  --color-muted: var(--mp-text-muted);
+  --color-up: var(--mp-up);
+  --color-down: var(--mp-down);
+  --color-neutral: var(--mp-neutral);
+  --color-warn: var(--mp-warn);
+  --color-critical: var(--mp-critical);
+  --color-info: var(--mp-info);
+  --color-accent: var(--mp-accent);
+  --font-sans: var(--mp-font-sans);
+  --font-mono: var(--mp-font-mono);
+  --text-xs: var(--mp-text-xs);
+  --text-sm: var(--mp-text-sm);
+  --text-base: var(--mp-text-base);
+  --text-lg: var(--mp-text-lg);
+  --radius-sm: var(--mp-radius);
+  --spacing-row: var(--mp-row-h);
+  --spacing-sidebar: var(--mp-sidebar-w);
+}
