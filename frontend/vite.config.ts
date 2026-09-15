@@ -12,7 +12,8 @@ const proxy = {
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  server: { port: 5173, strictPort: true, proxy },
+  // Tek adres: geliştirmede de, Docker'da da http://localhost:3000
+  server: { port: 3000, strictPort: true, proxy },
   preview: { port: 3000, strictPort: true, proxy },
   build: { sourcemap: false },
   test: {

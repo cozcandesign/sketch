@@ -13,6 +13,7 @@ def test_defaults() -> None:
     assert s.llm_tier2_model == "claude-sonnet-5"
     assert s.llm_daily_budget_usd == 3.0
     assert s.anthropic_api_key is None
+    assert s.cors_origins == ["http://localhost:3000"]
     assert s.sqlite_path == Path("./data/marketpulse.db")
     assert s.sync_db_url.startswith("sqlite:///")
 

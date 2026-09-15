@@ -6,7 +6,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 NPM := npm --prefix frontend
 
-.PHONY: help install dev up down logs test test-backend test-frontend lint typecheck check migrate gen-types backfill backtest
+.PHONY: help install ensure-deps dev up down logs test test-backend test-frontend lint typecheck check migrate gen-types backfill backtest
 
 help: ## Komut listesi
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -15,9 +15,13 @@ install: ## Bağımlılıkları kur (uv sync + npm install)
 	cd backend && uv sync
 	$(NPM) install
 
-dev: ## api (reload) + engine + Vite dev server'ı birlikte başlat
-	@test -f .env || (echo "HATA: .env yok. Önce: cp .env.example .env" && exit 1)
+dev: ensure-deps ## api (reload) + engine + Vite dev server'ı birlikte başlat
+	@test -f .env || (echo "HATA: .env yok. Once sunu calistirin: cp .env.example .env" && exit 1)
 	uv run --project backend honcho start -f Procfile.dev
+
+ensure-deps: ## Eksik bağımlılıkları sessizce kurar (make dev bunu kendisi çağırır)
+	@test -d frontend/node_modules || (echo ">>> frontend bagimliliklari kuruluyor (ilk calistirma, birkac dakika surebilir)..." && $(NPM) install)
+	@test -x backend/.venv/bin/python || (echo ">>> backend bagimliliklari kuruluyor..." && cd backend && uv sync)
 
 up: ## Docker: üç servisi kur ve başlat
 	docker compose up -d --build

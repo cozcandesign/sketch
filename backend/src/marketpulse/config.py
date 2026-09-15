@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"  # yerel ağ / container içi dinleme
     api_port: int = 8000
     cors_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"]
+        default_factory=lambda: ["http://localhost:3000"]
     )
 
     news_ingest_latency_sec: int = 300

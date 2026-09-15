@@ -25,7 +25,7 @@ def settings(tmp_path: Path) -> Settings:
         db_url=f"sqlite+aiosqlite:///{tmp_path / 'api.db'}",
         outbox_poll_interval_sec=0.02,
         heartbeat_stale_after_sec=60,
-        cors_origins=["http://localhost:5173"],
+        cors_origins=["http://localhost:3000"],
     )
 
 
@@ -117,11 +117,11 @@ def test_cors_allows_configured_origin(client: TestClient) -> None:
     response = client.options(
         "/api/v1/health",
         headers={
-            "Origin": "http://localhost:5173",
+            "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "GET",
         },
     )
-    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
     denied = client.get("/api/v1/health", headers={"Origin": "http://evil.example"})
     assert "access-control-allow-origin" not in denied.headers
 

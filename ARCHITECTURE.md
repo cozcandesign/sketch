@@ -112,7 +112,7 @@ kendisi bağlanır (`api/live_relay.py`) ve `price.{symbol}` konusuna yayınlar.
 `stale=true` gönderilir; arayüz "canlı değil" rozetini gösterir.
 
 **frontend → api:** Prod'da nginx `/api/*` isteklerini `api:8000/api/*`'e, `/ws`'i upgrade başlıklarıyla
-`api:8000/ws`'e proxy'ler; tarayıcı tek origin görür. Dev'de Vite dev server (5173) aynı proxy'yi
+`api:8000/ws`'e proxy'ler; tarayıcı tek origin görür. Dev'de Vite dev server (aynı port: 3000) aynı proxy'yi
 `vite.config.ts` içinde yapar. CORS middleware yine `MP_CORS_ORIGINS` ile açıktır.
 
 ---
@@ -938,7 +938,7 @@ varsa `notifications.show()`; ses açıksa `sound.beep(severity)`.
 | `MP_TIMEZONE` | `Europe/Istanbul` | Arayüz gösterimi |
 | `MP_LOG_LEVEL` | `INFO` | |
 | `MP_API_HOST` / `MP_API_PORT` | `0.0.0.0` / `8000` | |
-| `MP_CORS_ORIGINS` | `http://localhost:5173,http://localhost:3000` | |
+| `MP_CORS_ORIGINS` | `http://localhost:3000` | Arayüz hem dev'de hem Docker'da 3000'de; nginx/Vite proxy sayesinde tarayıcı tek origin görür |
 | `MP_NEWS_INGEST_LATENCY_SEC` | `300` | Look-ahead koruması |
 | `MP_LLM_TIER1_MODEL` | `claude-haiku-4-5` | Kademe 1 |
 | `MP_LLM_TIER2_MODEL` | `claude-sonnet-5` | Kademe 2 |
@@ -1052,7 +1052,7 @@ services:
   60 sn bekler, hazır olmazsa kendisi koşar.
 - `frontend/Dockerfile`: `node:22-alpine` build → `nginx:1.27-alpine`; `nginx.conf` `/api` ve `/ws` proxy.
 - `make dev`: `uv run --project backend honcho start -f Procfile.dev` → `api` (uvicorn `--factory --reload`),
-  `engine`, `web` (Vite dev server, 5173, proxy ile). Tek `Ctrl+C` hepsini kapatır. Süreçler depo kökünden
+  `engine`, `web` (Vite dev server, **3000**, proxy ile). Tek `Ctrl+C` hepsini kapatır. Süreçler depo kökünden
   çalışır; `.env` ve `./data` kökte kalır.
 - İlk kurulum: `cp .env.example .env` → anahtarları doldur → `docker compose up --build` →
   `http://localhost:3000`. Geliştirme için `make install` sonra `make dev`. İlk veri için `make backfill`
