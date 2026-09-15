@@ -36,6 +36,12 @@ const health: HealthResponse = {
   db: { size_bytes: 4096 },
   outbox: { last_id: 3, last_event_at: null, lag_seconds: null },
   ws: { clients: 1 },
+  live_prices: {
+    connected: true,
+    last_message_at: '2026-01-01T11:59:59Z',
+    messages: 42,
+    reconnects: 0,
+  },
 }
 
 function mockFetch(body: unknown, ok = true) {

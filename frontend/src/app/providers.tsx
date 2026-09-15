@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { useLiveConnection } from '@/api/useLive'
+import { useSymbols } from '@/api/queries/market'
 
 function LiveConnection() {
-  useLiveConnection()
+  const { data } = useSymbols()
+  useLiveConnection(data?.symbols ? [...data.symbols] : [])
   return null
 }
 

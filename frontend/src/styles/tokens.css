@@ -18,6 +18,12 @@
   --mp-critical: #ff5c5c;
   --mp-info: #5aa9e6;
   --mp-accent: #4f8cff;
+  /* Grafik seri renkleri: renk körlüğü ve kontrast denetiminden geçirilmiştir (dataviz doğrulayıcı).
+     Koyu tema: #3987e5 / #d95926 / #199e70 — tüm çiftlerde CVD ΔE ≥ 9, kontrast ≥ 3:1. */
+  --mp-series-1: #3987e5;
+  --mp-series-2: #d95926;
+  --mp-series-3: #199e70;
+  --mp-grid: #1e2530;
   --mp-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mp-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --mp-text-xs: 11px;
@@ -44,6 +50,10 @@
   --mp-critical: #d6323a;
   --mp-info: #2b7bc4;
   --mp-accent: #2f6fe0;
+  --mp-series-1: #2a78d6;
+  --mp-series-2: #eb6834;
+  --mp-series-3: #1baf7a;
+  --mp-grid: #e3e6ea;
 }
 
 @theme inline {
@@ -60,6 +70,10 @@
   --color-critical: var(--mp-critical);
   --color-info: var(--mp-info);
   --color-accent: var(--mp-accent);
+  --color-series-1: var(--mp-series-1);
+  --color-series-2: var(--mp-series-2);
+  --color-series-3: var(--mp-series-3);
+  --color-grid: var(--mp-grid);
   --font-sans: var(--mp-font-sans);
   --font-mono: var(--mp-font-mono);
   --text-xs: var(--mp-text-xs);

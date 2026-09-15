@@ -4,744 +4,744 @@
  */
 
 export interface paths {
-    "/api/v1/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Health */
-        get: operations["get_health_api_v1_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/symbols": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Symbols */
-        get: operations["list_symbols_api_v1_symbols_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/market/{symbol}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Market */
-        get: operations["get_market_api_v1_market__symbol__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/market/{symbol}/candles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Candles */
-        get: operations["get_candles_api_v1_market__symbol__candles_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/predictions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Predictions */
-        get: operations["list_predictions_api_v1_predictions_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/predictions/{prediction_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Prediction */
-        get: operations["get_prediction_api_v1_predictions__prediction_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/calibration": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Calibration */
-        get: operations["get_calibration_api_v1_calibration_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+  '/api/v1/health': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Health */
+    get: operations['get_health_api_v1_health_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/symbols': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** List Symbols */
+    get: operations['list_symbols_api_v1_symbols_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/market/{symbol}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Market */
+    get: operations['get_market_api_v1_market__symbol__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/market/{symbol}/candles': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Candles */
+    get: operations['get_candles_api_v1_market__symbol__candles_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/predictions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** List Predictions */
+    get: operations['list_predictions_api_v1_predictions_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/predictions/{prediction_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Prediction */
+    get: operations['get_prediction_api_v1_predictions__prediction_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/calibration': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Calibration */
+    get: operations['get_calibration_api_v1_calibration_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
-export type webhooks = Record<string, never>;
+export type webhooks = Record<string, never>
 export interface components {
-    schemas: {
-        /** CalibrationBinOut */
-        CalibrationBinOut: {
-            /** Bin */
-            bin: number;
-            /** Lower */
-            lower: number;
-            /** Upper */
-            upper: number;
-            /** N */
-            n: number;
-            /** Mean P */
-            mean_p: number | null;
-            /** Observed Freq */
-            observed_freq: number | null;
-        };
-        /** CalibrationOut */
-        CalibrationOut: {
-            /** Subset */
-            subset: string;
-            /** Window Days */
-            window_days: number | null;
-            overall: components["schemas"]["SummaryOut"];
-            /** By Model */
-            by_model: components["schemas"]["ModelSummaryOut"][];
-            /** By Horizon */
-            by_horizon: components["schemas"]["HorizonSummaryOut"][];
-            /** Bins */
-            bins: components["schemas"]["CalibrationBinOut"][];
-            /** Daily */
-            daily: components["schemas"]["DailyPointOut"][];
-            /** Pending */
-            pending: number;
-        };
-        /** CandleCoverageOut */
-        CandleCoverageOut: {
-            /** Interval */
-            interval: string;
-            /** Count */
-            count: number;
-            /** Last Close Time */
-            last_close_time: string | null;
-        };
-        /**
-         * CandleOut
-         * @description lightweight-charts biçimi: `time` saniye cinsinden UNIX zamanı (mum açılışı).
-         */
-        CandleOut: {
-            /** Time */
-            time: number;
-            /** Open */
-            open: number;
-            /** High */
-            high: number;
-            /** Low */
-            low: number;
-            /** Close */
-            close: number;
-            /** Volume */
-            volume: number;
-        };
-        /** CandlesOut */
-        CandlesOut: {
-            /** Symbol */
-            symbol: string;
-            /** Interval */
-            interval: string;
-            /** Candles */
-            candles: components["schemas"]["CandleOut"][];
-        };
-        /** CollectorHealthOut */
-        CollectorHealthOut: {
-            /** Collector */
-            collector: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "ok" | "degraded" | "down" | "disabled" | "budget_exhausted";
-            /** Last Success At */
-            last_success_at: string | null;
-            /** Last Error At */
-            last_error_at: string | null;
-            /** Last Error */
-            last_error: string | null;
-            /** Consecutive Failures */
-            consecutive_failures: number;
-        };
-        /** DailyPointOut */
-        DailyPointOut: {
-            /**
-             * Day
-             * Format: date
-             */
-            day: string;
-            /** N */
-            n: number;
-            /** Brier */
-            brier: number;
-            /** Hit Rate */
-            hit_rate: number;
-        };
-        /** DbHealthOut */
-        DbHealthOut: {
-            /** Size Bytes */
-            size_bytes: number | null;
-        };
-        /** EngineHealthOut */
-        EngineHealthOut: {
-            /** Alive */
-            alive: boolean;
-            /** Last Heartbeat */
-            last_heartbeat: string | null;
-            /** Age Seconds */
-            age_seconds: number | null;
-            /** Version */
-            version: string | null;
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** HealthResponse */
-        HealthResponse: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "ok" | "degraded" | "down";
-            /**
-             * Server Time
-             * Format: date-time
-             */
-            server_time: string;
-            /** Api Version */
-            api_version: string;
-            engine: components["schemas"]["EngineHealthOut"];
-            /** Collectors */
-            collectors: components["schemas"]["CollectorHealthOut"][];
-            db: components["schemas"]["DbHealthOut"];
-            outbox: components["schemas"]["OutboxHealthOut"];
-            ws: components["schemas"]["WsHealthOut"];
-            live_prices: components["schemas"]["LiveHealthOut"];
-        };
-        /**
-         * Horizon
-         * @description Tahmin ufku. Değerler API ve DB'de olduğu gibi kullanılır.
-         * @enum {string}
-         */
-        Horizon: "30m" | "1h" | "4h" | "24h";
-        /** HorizonStateOut */
-        HorizonStateOut: {
-            /** Horizon */
-            horizon: string;
-            /** Label Tr */
-            label_tr: string;
-            /** Predictions */
-            predictions: components["schemas"]["PredictionOut"][];
-        };
-        /** HorizonSummaryOut */
-        HorizonSummaryOut: {
-            /** N */
-            n: number;
-            /** Brier */
-            brier: number | null;
-            /** Brier Skill */
-            brier_skill: number | null;
-            /** Base Rate */
-            base_rate: number | null;
-            /** Hit Rate */
-            hit_rate: number | null;
-            /** Hit Ci Low */
-            hit_ci_low: number | null;
-            /** Hit Ci High */
-            hit_ci_high: number | null;
-            /** Beats Uninformed */
-            beats_uninformed: boolean;
-            /** Horizon */
-            horizon: string;
-            /** Label Tr */
-            label_tr: string;
-        };
-        /**
-         * Interval
-         * @description Mum zaman dilimi. Değerler Binance API'siyle ve DB ile aynı.
-         * @enum {string}
-         */
-        Interval: "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
-        /** LiveHealthOut */
-        LiveHealthOut: {
-            /** Connected */
-            connected: boolean;
-            /** Last Message At */
-            last_message_at: string | null;
-            /** Messages */
-            messages: number;
-            /** Reconnects */
-            reconnects: number;
-        };
-        /** MarketStateOut */
-        MarketStateOut: {
-            /** Symbol */
-            symbol: string;
-            price: components["schemas"]["PriceOut"];
-            /** Coverage */
-            coverage: components["schemas"]["CandleCoverageOut"][];
-            /** Horizons */
-            horizons: components["schemas"]["HorizonStateOut"][];
-        };
-        /** ModelSummaryOut */
-        ModelSummaryOut: {
-            /** N */
-            n: number;
-            /** Brier */
-            brier: number | null;
-            /** Brier Skill */
-            brier_skill: number | null;
-            /** Base Rate */
-            base_rate: number | null;
-            /** Hit Rate */
-            hit_rate: number | null;
-            /** Hit Ci Low */
-            hit_ci_low: number | null;
-            /** Hit Ci High */
-            hit_ci_high: number | null;
-            /** Beats Uninformed */
-            beats_uninformed: boolean;
-            /** Model Version */
-            model_version: string;
-            /** Label Tr */
-            label_tr: string;
-        };
-        /** OutboxHealthOut */
-        OutboxHealthOut: {
-            /** Last Id */
-            last_id: number;
-            /** Last Event At */
-            last_event_at: string | null;
-            /** Lag Seconds */
-            lag_seconds: number | null;
-        };
-        /** OutcomeOut */
-        OutcomeOut: {
-            /**
-             * Resolved At
-             * Format: date-time
-             */
-            resolved_at: string;
-            /** Price At Target */
-            price_at_target: number | null;
-            /** Realized Return */
-            realized_return: number | null;
-            /**
-             * Outcome
-             * @enum {string}
-             */
-            outcome: "up" | "down" | "unresolved";
-            /** Hit */
-            hit: boolean | null;
-            /** Brier */
-            brier: number | null;
-            /** Resolved By */
-            resolved_by: string;
-        };
-        /** PredictionOut */
-        PredictionOut: {
-            /** Id */
-            id: number;
-            /** Symbol */
-            symbol: string;
-            /** Horizon */
-            horizon: string;
-            /**
-             * As Of
-             * Format: date-time
-             */
-            as_of: string;
-            /**
-             * Target At
-             * Format: date-time
-             */
-            target_at: string;
-            /** Price At */
-            price_at: number;
-            /** P Up */
-            p_up: number;
-            /** Expected Low */
-            expected_low: number | null;
-            /** Expected High */
-            expected_high: number | null;
-            /** Confidence */
-            confidence: number;
-            /**
-             * Confidence Label
-             * @enum {string}
-             */
-            confidence_label: "low" | "mid" | "high";
-            /** Conflict */
-            conflict: boolean;
-            /** Veto Active */
-            veto_active: boolean;
-            /** Veto Reason */
-            veto_reason: string | null;
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "live" | "baseline" | "backtest";
-            /** Model Version */
-            model_version: string;
-            /** Non Overlapping */
-            non_overlapping: boolean;
-            /** Report */
-            report: {
-                [key: string]: unknown;
-            } | null;
-            outcome: components["schemas"]["OutcomeOut"] | null;
-            /** Signals */
-            signals?: components["schemas"]["SignalOut"][] | null;
-        };
-        /** PredictionPage */
-        PredictionPage: {
-            /** Items */
-            items: components["schemas"]["PredictionOut"][];
-            /** Next Cursor */
-            next_cursor: number | null;
-        };
-        /** PriceOut */
-        PriceOut: {
-            /** Last */
-            last: number | null;
-            /** Change 24H */
-            change_24h: number | null;
-            /** As Of */
-            as_of: string | null;
-            /** Stale */
-            stale: boolean;
-        };
-        /** SignalOut */
-        SignalOut: {
-            /** Module */
-            module: string;
-            /** Score */
-            score: number;
-            /** Confidence */
-            confidence: number;
-            /** Coverage */
-            coverage: number;
-            /** Components */
-            components: {
-                [key: string]: number;
-            } | null;
-            /** Rationale */
-            rationale: string[] | null;
-        };
-        /** SummaryOut */
-        SummaryOut: {
-            /** N */
-            n: number;
-            /** Brier */
-            brier: number | null;
-            /** Brier Skill */
-            brier_skill: number | null;
-            /** Base Rate */
-            base_rate: number | null;
-            /** Hit Rate */
-            hit_rate: number | null;
-            /** Hit Ci Low */
-            hit_ci_low: number | null;
-            /** Hit Ci High */
-            hit_ci_high: number | null;
-            /** Beats Uninformed */
-            beats_uninformed: boolean;
-        };
-        /** SymbolsOut */
-        SymbolsOut: {
-            /** Symbols */
-            symbols: string[];
-            /** Timezone */
-            timezone: string;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
-        /** WsHealthOut */
-        WsHealthOut: {
-            /** Clients */
-            clients: number;
-        };
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** CalibrationBinOut */
+    CalibrationBinOut: {
+      /** Bin */
+      bin: number
+      /** Lower */
+      lower: number
+      /** Upper */
+      upper: number
+      /** N */
+      n: number
+      /** Mean P */
+      mean_p: number | null
+      /** Observed Freq */
+      observed_freq: number | null
+    }
+    /** CalibrationOut */
+    CalibrationOut: {
+      /** Subset */
+      subset: string
+      /** Window Days */
+      window_days: number | null
+      overall: components['schemas']['SummaryOut']
+      /** By Model */
+      by_model: components['schemas']['ModelSummaryOut'][]
+      /** By Horizon */
+      by_horizon: components['schemas']['HorizonSummaryOut'][]
+      /** Bins */
+      bins: components['schemas']['CalibrationBinOut'][]
+      /** Daily */
+      daily: components['schemas']['DailyPointOut'][]
+      /** Pending */
+      pending: number
+    }
+    /** CandleCoverageOut */
+    CandleCoverageOut: {
+      /** Interval */
+      interval: string
+      /** Count */
+      count: number
+      /** Last Close Time */
+      last_close_time: string | null
+    }
+    /**
+     * CandleOut
+     * @description lightweight-charts biçimi: `time` saniye cinsinden UNIX zamanı (mum açılışı).
+     */
+    CandleOut: {
+      /** Time */
+      time: number
+      /** Open */
+      open: number
+      /** High */
+      high: number
+      /** Low */
+      low: number
+      /** Close */
+      close: number
+      /** Volume */
+      volume: number
+    }
+    /** CandlesOut */
+    CandlesOut: {
+      /** Symbol */
+      symbol: string
+      /** Interval */
+      interval: string
+      /** Candles */
+      candles: components['schemas']['CandleOut'][]
+    }
+    /** CollectorHealthOut */
+    CollectorHealthOut: {
+      /** Collector */
+      collector: string
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'ok' | 'degraded' | 'down' | 'disabled' | 'budget_exhausted'
+      /** Last Success At */
+      last_success_at: string | null
+      /** Last Error At */
+      last_error_at: string | null
+      /** Last Error */
+      last_error: string | null
+      /** Consecutive Failures */
+      consecutive_failures: number
+    }
+    /** DailyPointOut */
+    DailyPointOut: {
+      /**
+       * Day
+       * Format: date
+       */
+      day: string
+      /** N */
+      n: number
+      /** Brier */
+      brier: number
+      /** Hit Rate */
+      hit_rate: number
+    }
+    /** DbHealthOut */
+    DbHealthOut: {
+      /** Size Bytes */
+      size_bytes: number | null
+    }
+    /** EngineHealthOut */
+    EngineHealthOut: {
+      /** Alive */
+      alive: boolean
+      /** Last Heartbeat */
+      last_heartbeat: string | null
+      /** Age Seconds */
+      age_seconds: number | null
+      /** Version */
+      version: string | null
+    }
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components['schemas']['ValidationError'][]
+    }
+    /** HealthResponse */
+    HealthResponse: {
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'ok' | 'degraded' | 'down'
+      /**
+       * Server Time
+       * Format: date-time
+       */
+      server_time: string
+      /** Api Version */
+      api_version: string
+      engine: components['schemas']['EngineHealthOut']
+      /** Collectors */
+      collectors: components['schemas']['CollectorHealthOut'][]
+      db: components['schemas']['DbHealthOut']
+      outbox: components['schemas']['OutboxHealthOut']
+      ws: components['schemas']['WsHealthOut']
+      live_prices: components['schemas']['LiveHealthOut']
+    }
+    /**
+     * Horizon
+     * @description Tahmin ufku. Değerler API ve DB'de olduğu gibi kullanılır.
+     * @enum {string}
+     */
+    Horizon: '30m' | '1h' | '4h' | '24h'
+    /** HorizonStateOut */
+    HorizonStateOut: {
+      /** Horizon */
+      horizon: string
+      /** Label Tr */
+      label_tr: string
+      /** Predictions */
+      predictions: components['schemas']['PredictionOut'][]
+    }
+    /** HorizonSummaryOut */
+    HorizonSummaryOut: {
+      /** N */
+      n: number
+      /** Brier */
+      brier: number | null
+      /** Brier Skill */
+      brier_skill: number | null
+      /** Base Rate */
+      base_rate: number | null
+      /** Hit Rate */
+      hit_rate: number | null
+      /** Hit Ci Low */
+      hit_ci_low: number | null
+      /** Hit Ci High */
+      hit_ci_high: number | null
+      /** Beats Uninformed */
+      beats_uninformed: boolean
+      /** Horizon */
+      horizon: string
+      /** Label Tr */
+      label_tr: string
+    }
+    /**
+     * Interval
+     * @description Mum zaman dilimi. Değerler Binance API'siyle ve DB ile aynı.
+     * @enum {string}
+     */
+    Interval: '1m' | '5m' | '15m' | '1h' | '4h' | '1d'
+    /** LiveHealthOut */
+    LiveHealthOut: {
+      /** Connected */
+      connected: boolean
+      /** Last Message At */
+      last_message_at: string | null
+      /** Messages */
+      messages: number
+      /** Reconnects */
+      reconnects: number
+    }
+    /** MarketStateOut */
+    MarketStateOut: {
+      /** Symbol */
+      symbol: string
+      price: components['schemas']['PriceOut']
+      /** Coverage */
+      coverage: components['schemas']['CandleCoverageOut'][]
+      /** Horizons */
+      horizons: components['schemas']['HorizonStateOut'][]
+    }
+    /** ModelSummaryOut */
+    ModelSummaryOut: {
+      /** N */
+      n: number
+      /** Brier */
+      brier: number | null
+      /** Brier Skill */
+      brier_skill: number | null
+      /** Base Rate */
+      base_rate: number | null
+      /** Hit Rate */
+      hit_rate: number | null
+      /** Hit Ci Low */
+      hit_ci_low: number | null
+      /** Hit Ci High */
+      hit_ci_high: number | null
+      /** Beats Uninformed */
+      beats_uninformed: boolean
+      /** Model Version */
+      model_version: string
+      /** Label Tr */
+      label_tr: string
+    }
+    /** OutboxHealthOut */
+    OutboxHealthOut: {
+      /** Last Id */
+      last_id: number
+      /** Last Event At */
+      last_event_at: string | null
+      /** Lag Seconds */
+      lag_seconds: number | null
+    }
+    /** OutcomeOut */
+    OutcomeOut: {
+      /**
+       * Resolved At
+       * Format: date-time
+       */
+      resolved_at: string
+      /** Price At Target */
+      price_at_target: number | null
+      /** Realized Return */
+      realized_return: number | null
+      /**
+       * Outcome
+       * @enum {string}
+       */
+      outcome: 'up' | 'down' | 'unresolved'
+      /** Hit */
+      hit: boolean | null
+      /** Brier */
+      brier: number | null
+      /** Resolved By */
+      resolved_by: string
+    }
+    /** PredictionOut */
+    PredictionOut: {
+      /** Id */
+      id: number
+      /** Symbol */
+      symbol: string
+      /** Horizon */
+      horizon: string
+      /**
+       * As Of
+       * Format: date-time
+       */
+      as_of: string
+      /**
+       * Target At
+       * Format: date-time
+       */
+      target_at: string
+      /** Price At */
+      price_at: number
+      /** P Up */
+      p_up: number
+      /** Expected Low */
+      expected_low: number | null
+      /** Expected High */
+      expected_high: number | null
+      /** Confidence */
+      confidence: number
+      /**
+       * Confidence Label
+       * @enum {string}
+       */
+      confidence_label: 'low' | 'mid' | 'high'
+      /** Conflict */
+      conflict: boolean
+      /** Veto Active */
+      veto_active: boolean
+      /** Veto Reason */
+      veto_reason: string | null
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: 'live' | 'baseline' | 'backtest'
+      /** Model Version */
+      model_version: string
+      /** Non Overlapping */
+      non_overlapping: boolean
+      /** Report */
+      report: {
+        [key: string]: unknown
+      } | null
+      outcome: components['schemas']['OutcomeOut'] | null
+      /** Signals */
+      signals?: components['schemas']['SignalOut'][] | null
+    }
+    /** PredictionPage */
+    PredictionPage: {
+      /** Items */
+      items: components['schemas']['PredictionOut'][]
+      /** Next Cursor */
+      next_cursor: number | null
+    }
+    /** PriceOut */
+    PriceOut: {
+      /** Last */
+      last: number | null
+      /** Change 24H */
+      change_24h: number | null
+      /** As Of */
+      as_of: string | null
+      /** Stale */
+      stale: boolean
+    }
+    /** SignalOut */
+    SignalOut: {
+      /** Module */
+      module: string
+      /** Score */
+      score: number
+      /** Confidence */
+      confidence: number
+      /** Coverage */
+      coverage: number
+      /** Components */
+      components: {
+        [key: string]: number
+      } | null
+      /** Rationale */
+      rationale: string[] | null
+    }
+    /** SummaryOut */
+    SummaryOut: {
+      /** N */
+      n: number
+      /** Brier */
+      brier: number | null
+      /** Brier Skill */
+      brier_skill: number | null
+      /** Base Rate */
+      base_rate: number | null
+      /** Hit Rate */
+      hit_rate: number | null
+      /** Hit Ci Low */
+      hit_ci_low: number | null
+      /** Hit Ci High */
+      hit_ci_high: number | null
+      /** Beats Uninformed */
+      beats_uninformed: boolean
+    }
+    /** SymbolsOut */
+    SymbolsOut: {
+      /** Symbols */
+      symbols: string[]
+      /** Timezone */
+      timezone: string
+    }
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[]
+      /** Message */
+      msg: string
+      /** Error Type */
+      type: string
+      /** Input */
+      input?: unknown
+      /** Context */
+      ctx?: Record<string, never>
+    }
+    /** WsHealthOut */
+    WsHealthOut: {
+      /** Clients */
+      clients: number
+    }
+  }
+  responses: never
+  parameters: never
+  requestBodies: never
+  headers: never
+  pathItems: never
 }
-export type $defs = Record<string, never>;
+export type $defs = Record<string, never>
 export interface operations {
-    get_health_api_v1_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthResponse"];
-                };
-            };
-        };
-    };
-    list_symbols_api_v1_symbols_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SymbolsOut"];
-                };
-            };
-        };
-    };
-    get_market_api_v1_market__symbol__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                symbol: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MarketStateOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_candles_api_v1_market__symbol__candles_get: {
-        parameters: {
-            query?: {
-                interval?: components["schemas"]["Interval"];
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                symbol: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CandlesOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_predictions_api_v1_predictions_get: {
-        parameters: {
-            query?: {
-                symbol?: string | null;
-                horizon?: components["schemas"]["Horizon"] | null;
-                source?: ("live" | "baseline" | "backtest") | null;
-                status?: "active" | "resolved" | "all";
-                since?: string | null;
-                cursor?: number | null;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PredictionPage"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_prediction_api_v1_predictions__prediction_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                prediction_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PredictionOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_calibration_api_v1_calibration_get: {
-        parameters: {
-            query?: {
-                symbol?: string | null;
-                horizon?: components["schemas"]["Horizon"] | null;
-                source?: string | null;
-                subset?: "all" | "non_overlapping" | "high_confidence";
-                window?: "7d" | "30d" | "90d" | "all";
-                bins?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CalibrationOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
+  get_health_api_v1_health_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HealthResponse']
+        }
+      }
+    }
+  }
+  list_symbols_api_v1_symbols_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SymbolsOut']
+        }
+      }
+    }
+  }
+  get_market_api_v1_market__symbol__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        symbol: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MarketStateOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_candles_api_v1_market__symbol__candles_get: {
+    parameters: {
+      query?: {
+        interval?: components['schemas']['Interval']
+        limit?: number
+      }
+      header?: never
+      path: {
+        symbol: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CandlesOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_predictions_api_v1_predictions_get: {
+    parameters: {
+      query?: {
+        symbol?: string | null
+        horizon?: components['schemas']['Horizon'] | null
+        source?: ('live' | 'baseline' | 'backtest') | null
+        status?: 'active' | 'resolved' | 'all'
+        since?: string | null
+        cursor?: number | null
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PredictionPage']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_prediction_api_v1_predictions__prediction_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        prediction_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PredictionOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_calibration_api_v1_calibration_get: {
+    parameters: {
+      query?: {
+        symbol?: string | null
+        horizon?: components['schemas']['Horizon'] | null
+        source?: string | null
+        subset?: 'all' | 'non_overlapping' | 'high_confidence'
+        window?: '7d' | '30d' | '90d' | 'all'
+        bins?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CalibrationOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
 }

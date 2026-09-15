@@ -40,6 +40,19 @@ export function DataStatusStrip() {
         ) : null}
       </span>
       <span className="h-3 w-px bg-border" />
+      <span className="flex items-center gap-1.5">
+        <Dot tone={data?.live_prices.connected ? 'up' : 'critical'} />
+        <span>{tr.status.livePrices}</span>
+        <span className="text-muted">
+          {data?.live_prices.connected ? tr.status.connected : tr.status.disconnected}
+        </span>
+        {data?.live_prices.last_message_at ? (
+          <span className="num text-muted">
+            {relativeTime(data.live_prices.last_message_at, now, labels)}
+          </span>
+        ) : null}
+      </span>
+      <span className="h-3 w-px bg-border" />
       {data && data.collectors.length === 0 ? (
         <span className="text-muted">{tr.status.noCollectors}</span>
       ) : null}

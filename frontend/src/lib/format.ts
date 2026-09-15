@@ -1,5 +1,42 @@
 // Sayı biçimleri tek yerden (CLAUDE.md §7).
 
+const priceFormatter = new Intl.NumberFormat('tr-TR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+const smallPriceFormatter = new Intl.NumberFormat('tr-TR', {
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4,
+})
+
+export function formatPrice(value: number | null | undefined): string {
+  if (value == null) return '—'
+  return value >= 10 ? priceFormatter.format(value) : smallPriceFormatter.format(value)
+}
+
+/** Oranı yüzdeye çevirir: 0.0123 → "+%1,23" */
+export function formatPercent(value: number | null | undefined, digits = 2): string {
+  if (value == null) return '—'
+  const sign = value > 0 ? '+' : ''
+  return `${sign}%${(value * 100).toFixed(digits).replace('.', ',')}`
+}
+
+/** Olasılığı tam sayı yüzde olarak: 0.62 → "%62" */
+export function formatProbability(value: number | null | undefined): string {
+  if (value == null) return '—'
+  return `%${Math.round(value * 100)}`
+}
+
+export function formatScore(value: number | null | undefined, digits = 3): string {
+  if (value == null) return '—'
+  return value.toFixed(digits).replace('.', ',')
+}
+
+export function formatCount(value: number | null | undefined): string {
+  if (value == null) return '—'
+  return new Intl.NumberFormat('tr-TR').format(value)
+}
+
 export function formatBytes(bytes: number | null | undefined): string {
   if (bytes == null) return '—'
   if (bytes < 1024) return `${bytes} B`
