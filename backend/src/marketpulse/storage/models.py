@@ -1,11 +1,16 @@
-"""Repository'nin döndürdüğü küçük veri modelleri (Faz 0 kapsamı)."""
+"""Repository'nin döndürdüğü veri modelleri. DB satırları ↔ tipli nesneler."""
 
 from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from marketpulse.core.types import Horizon, Interval
+
 HealthStatus = Literal["ok", "degraded", "down", "disabled", "budget_exhausted"]
+PredictionSource = Literal["live", "baseline", "backtest"]
+OutcomeLabel = Literal["up", "down", "unresolved"]
+ConfidenceLabel = Literal["low", "mid", "high"]
 
 
 class Heartbeat(BaseModel):
@@ -33,3 +38,148 @@ class OutboxEvent(BaseModel):
     created_at: datetime
     topic: str
     payload: dict[str, Any]
+
+
+class Candle(BaseModel):
+    """Kapanmış mum. `close_time = open_time + interval` (Binance'in -1 ms'i normalize edilir)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    interval: Interval
+    open_time: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    quote_volume: float = 0.0
+    trades: int = 0
+    taker_buy_base: float = 0.0
+    close_time: datetime
+
+    @property
+    def is_green(self) -> bool:
+        return self.close > self.open
+
+
+class CandleGap:
+    """Mum serisinde eksik aralık: [start, end) — her ikisi de open_time."""
+
+    __slots__ = ("end", "start")
+
+    def __init__(self, start: datetime, end: datetime) -> None:
+        self.start = start
+        self.end = end
+
+    def __repr__(self) -> str:
+        return f"CandleGap({self.start.isoformat()}..{self.end.isoformat()})"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, CandleGap) and self.start == other.start and self.end == other.end
+
+    def __hash__(self) -> int:
+        return hash((self.start, self.end))
+
+
+class NewPrediction(BaseModel):
+    """Deftere yazılacak tahmin (ARCHITECTURE.md §6.3)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    horizon: Horizon
+    as_of: datetime
+    target_at: datetime
+    price_at: float
+    p_up: float
+    expected_low: float | None = None
+    expected_high: float | None = None
+    confidence: float
+    confidence_label: ConfidenceLabel
+    conflict: bool = False
+    veto_active: bool = False
+    veto_reason: str | None = None
+    combined_score: float | None = None
+    weights: dict[str, float] | None = None
+    ensemble_version: str
+    non_overlapping: bool
+    source: PredictionSource
+    run_id: str | None = None
+    report: dict[str, Any] | None = None
+
+
+class SignalRow(BaseModel):
+    """Tahmin anındaki tek modül skoru."""
+
+    model_config = ConfigDict(frozen=True)
+
+    module: str
+    score: float
+    confidence: float
+    coverage: float
+    components: dict[str, float] | None = None
+    rationale: list[str] | None = None
+    data_as_of: datetime | None = None
+
+
+class PredictionOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    prediction_id: int
+    resolved_at: datetime
+    price_at_target: float | None
+    realized_return: float | None
+    outcome: OutcomeLabel
+    hit: bool | None
+    brier: float | None
+    resolved_by: str
+
+
+class Prediction(BaseModel):
+    """Defterden okunan tahmin (varsa sonucuyla)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    created_at: datetime
+    symbol: str
+    horizon: Horizon
+    as_of: datetime
+    target_at: datetime
+    price_at: float
+    p_up: float
+    expected_low: float | None
+    expected_high: float | None
+    confidence: float
+    confidence_label: ConfidenceLabel
+    conflict: bool
+    veto_active: bool
+    veto_reason: str | None
+    combined_score: float | None
+    weights: dict[str, float] | None
+    ensemble_version: str
+    non_overlapping: bool
+    source: PredictionSource
+    run_id: str | None
+    report: dict[str, Any] | None
+    outcome: PredictionOutcome | None = None
+    signals: list[SignalRow] | None = None
+
+
+class ResolvedRow(BaseModel):
+    """Metrik hesabı için sadeleştirilmiş çözümlenmiş tahmin."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    horizon: Horizon
+    as_of: datetime
+    source: PredictionSource
+    ensemble_version: str
+    p_up: float
+    y: int  # 1 = yukarı, 0 = aşağı
+    brier: float
+    hit: bool
+    non_overlapping: bool
+    confidence_label: ConfidenceLabel
