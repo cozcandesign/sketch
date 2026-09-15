@@ -8,7 +8,7 @@ iş planı `ROADMAP.md` içindedir. Üçü çelişirse öncelik sırası: CLAUDE
 
 **MarketPulse**, seçili kripto paralar (başlangıç: BTC, ETH, SOL) için **30dk / 1s / 4s / 24s** ufuklarında
 **yön olasılığı** ve piyasa durumu raporu üreten kişisel bir analiz sistemidir. Python backend
-(asyncio scheduler + FastAPI) ve React frontend'den oluşur. Tek kullanıcı, yerel ağda çalışır.
+(asyncio engine + FastAPI) ve React frontend'den oluşur. Tek kullanıcı, yerel ağda çalışır.
 
 Sistemin işi: veri toplamak, sinyal modüllerini çalıştırmak, `olasılık + beklenen aralık + güven + gerekçe +
 karşıt argüman` üretmek, her tahmini kaydetmek, ufuk dolunca gerçek sonuçla karşılaştırmak ve hangi modülün
@@ -36,7 +36,12 @@ Kararı kullanıcı verir. Sistem şunu der: *"Şu veriler şunu gösteriyor, ol
   açıklanır.
 - Karar gerektiren konuda varsayım yapılmaz, sorulur. Rutin teknik tercihler Claude tarafından verilir ve
   özette "şunu şöyle seçtim, sebebi şu" diye belirtilir.
-- Her oturum sonunda özet: ne yapıldı, hangi testler geçti, ne kaldı, sonraki adım. En fazla 10 satır.
+- Her faz ve her oturum sonunda sade Türkçe özet, dört başlık: **ne yaptın, ne çalışıyor, ne çalışmıyor,
+  benden ne gerekiyor.** En fazla 15 satır.
+- Kullanıcının elle yapması gereken adımlar tıklama seviyesinde anlatılır: hangi dosya, hangi satır, hangi
+  komut, hangi buton.
+- "Muhtemelen çalışır" denmez. Çalıştırılır, görülür, sonra söylenir. Bu ortamda çalıştırılamayan şey
+  (örneğin Docker daemon yoksa) "burada çalıştıramadım, sende şu komutla denenecek" diye yazılır.
 - Çalışmayan şey "çalışıyor" diye raporlanmaz. Test edilemeyen şey "test edilmedi" diye işaretlenir.
 
 ## 3. Verilmiş kararlar
@@ -49,7 +54,7 @@ Kararı kullanıcı verir. Sistem şunu der: *"Şu veriler şunu gösteriyor, ol
 | K4 | Rapor metni | Deterministik şablon. LLM yalnızca haber sınıflandırmada. | Test edilebilir, ucuz, sayıyla çelişen metin riski yok. |
 | K5 | Backtest kapsamı | Teknik + makro + funding + F&G backtest edilir. Order flow'un kalanı ve haber yalnızca ileriye dönük ölçülür. | Binance OI/LS geçmişi 30 gün; likidasyon, order book ve RSS geçmişi yok. Kendi arşiv ilk günden birikir. |
 | K6 | Ekonomik takvim | Statik `calendar.yaml` (FOMC, CPI, NFP), yılda bir elle güncellenir. | Ücretsiz temiz API yok, scraping kırılgan. |
-| K7 | LLM | Claude Haiku 4.5 (`claude-haiku-4-5`), günlük harcama tavanı, aşımda haber modülü "veri yok" durumuna geçer. | Sınıflandırma için yeterli ve ucuz. |
+| K7 | LLM, iki kademe | Kademe 1 her haber: Claude Haiku 4.5 (`claude-haiku-4-5`) → kategori, ilgili coinler, kaba ton, önem 0–1. Kademe 2 önem > 0.6 (config): Claude Sonnet 5 (`claude-sonnet-5`) → derin analiz (fiyatlanmış mı, gerçek mi söylenti mi, ikinci derece etkiler, benzer geçmiş olaylar) → etki, güven, ufuk, gerekçe. Günlük tavan 3 USD (config). Aşımda önce Kademe 2 kapanır, Haiku devam eder; ikisi de kapanırsa haber modülü "veri yok", ensemble ağırlıkları yeniden dağıtır. | Ucuz eleme + pahalı derinlik yalnızca önemli haberde. Sonnet'in değeri veriyle ölçülür (K20). |
 | K8 | Haber kaynağı | RSS ile başla: CoinDesk, The Block, Cointelegraph, Decrypt. CryptoPanic anahtar varsa opsiyonel. | Ücretsiz plan kısıtlı. |
 | K9 | Çalışma ortamı | 7/24 küçük Linux makine (ev sunucusu veya VPS), Docker. Kesinti toleranslı. | WebSocket boşluklarında ilgili modüller "veri yok" der; sistem durmaz. Binance API ABD IP'lerini engeller. |
 | K10 | Arayüz | Web: FastAPI REST + WebSocket; Vite + React + TypeScript + Tailwind. Telegram yok. | Kullanıcı kararı. |
@@ -60,8 +65,13 @@ Kararı kullanıcı verir. Sistem şunu der: *"Şu veriler şunu gösteriyor, ol
 | K15 | Zaman | DB'de UTC. Arayüzde Europe/Istanbul. | |
 | K16 | Fiyat referansı | Gerçek sonuç Binance **spot** 1 dk kapanışından. Türev metrikleri USDT-M perpetual'dan. | |
 | K17 | Depolama | SQLite (WAL modu), SQLAlchemy Core + Alembic. TimescaleDB'ye geçilebilir repository soyutlaması. | |
-| K18 | Süreçler | Üç compose servisi: `scheduler` (tek yazıcı), `api` (okuyucu + WS), `frontend` (nginx). Redis/Kafka yok; `events_outbox` tablosu. | Tek kullanıcı için yeterli, çökme izolasyonu var. |
+| K18 | Süreçler | Üç compose servisi: `engine` (tek yazıcı), `api` (okuyucu + WS), `frontend` (nginx). Redis/Kafka yok; `events_outbox` tablosu. | Tek kullanıcı için yeterli, çökme izolasyonu var. |
 | K19 | Olasılık sınırı | Kalibrasyon kanıtlanana kadar P(yukarı) [0.10, 0.90] aralığına kırpılır. | Aşırı güvenli çıktı üretmemek için. |
+| K20 | Haber kademe ölçümü | Her haber için geçtiği kademe ve yayın sonrası 1s/4s/24s fiyat hareketi kaydedilir. Kalibrasyon ekranında "Haiku isabeti vs Sonnet isabeti" karşılaştırması. | Sonnet'in parasını hak edip etmediği veriyle görülür. |
+| K21 | Saklama | Klines tüm zaman dilimlerinde kalıcı. Order flow 1 dk özetleri 90 gün, haberler 180 gün. Ham depth saklanmaz. | Kullanıcı kararı. 1 dk mum 3 sembol için yılda yaklaşık 200 MB. |
+| K22 | Veri durumu şeridi | Her ekranın üstünde: hangi collector çalışıyor, son güncelleme ne zaman, hangisi kopuk. | Kullanıcı kararı; "veri yok" durumları görünür olsun. |
+| K23 | Maliyet | Ayrı `/costs` endpoint'i ve Maliyet ekranı: günlük/aylık API harcaması, kademe kırılımı. Ayarlar ekranında bütçe tavanı. | Kullanıcı kararı. |
+| K24 | Süreç adı | Veri toplayan ve tahmin üreten süreç `engine` (`python -m marketpulse.engine`, compose servisi `engine`). | Kullanıcı spesifikasyonu: "engine + api + frontend". |
 
 Yeni karar alındığında tabloya satır eklenir. Karar değişirse satır güncellenir, eski satır silinmez;
 "iptal edildi: K#, tarih, sebep" notu düşülür.
@@ -70,8 +80,9 @@ Yeni karar alındığında tabloya satır eklenir. Karar değişirse satır gün
 
 Üç süreç, tek `docker compose up`:
 
-- **scheduler** — collector'lar (REST + WebSocket), feature hesaplama, sinyal modülleri, ensemble, tahmin
-  defteri, sonuç çözümleyici, metrikler, uyarı motoru. DB'nin tek düzenli yazıcısı.
+- **engine** — collector'lar (REST + WebSocket), iki kademeli haber sınıflandırma, feature hesaplama, sinyal
+  modülleri, ensemble, tahmin defteri, sonuç çözümleyici, haber sonuç ölçümü, metrikler, uyarı motoru.
+  DB'nin tek düzenli yazıcısı.
 - **api** — FastAPI. REST + WebSocket. DB'yi okur; `events_outbox` tablosunu izleyip WS istemcilerine
   yayınlar; canlı fiyatı Binance miniTicker akışından relay eder. Yalnızca ayarları, uyarı onaylarını ve
   ağırlık önerisi kararlarını yazar.
@@ -93,7 +104,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 .
 ├── CLAUDE.md  ARCHITECTURE.md  ROADMAP.md
 ├── Makefile                      # dev / up / down / test / lint / typecheck / check / migrate / backfill / backtest / gen-types
-├── Procfile.dev                  # make dev için: api, scheduler, frontend
+├── Procfile.dev                  # make dev için: api, engine, frontend
 ├── docker-compose.yml
 ├── .env.example
 ├── data/                         # SQLite dosyası (git'e girmez)
@@ -113,28 +124,28 @@ Ayrıntı: `ARCHITECTURE.md`.
 │   │   ├── signals/              # base.py, technical.py, orderflow.py, news.py, macro.py, sentiment.py
 │   │   ├── ensemble/             # combine.py, confidence.py, veto.py, expected_range.py, conflict.py
 │   │   ├── reporting/            # templates.py, counter_argument.py, banned_words.py
-│   │   ├── tracking/             # ledger.py, resolver.py, metrics.py, weekly.py, weight_proposals.py
-│   │   ├── alerts/               # rules.py, engine.py
-│   │   ├── llm/                  # client.py, news_classifier.py, budget.py, dedup.py
+│   │   ├── tracking/             # ledger.py, resolver.py, metrics.py, weekly.py, weight_proposals.py, news_outcomes.py
+│   │   ├── alerts/               # rules.py, evaluator.py
+│   │   ├── llm/                  # client.py, tier1.py (Haiku), tier2.py (Sonnet), router.py, budget.py, dedup.py
 │   │   ├── backtest/             # engine.py, report.py, cli.py
-│   │   ├── scheduler/            # jobs.py, supervisor.py, ratelimit.py, main.py
-│   │   └── api/                  # app.py, routers/, ws.py, live_relay.py, schemas/
+│   │   ├── engine/               # jobs.py, supervisor.py, ratelimit.py, main.py  → süreç: python -m marketpulse.engine
+│   │   └── api/                  # app.py, routers/ (predictions, market, signals, news, calibration, alerts, config, costs, health), ws.py, live_relay.py, schemas/
 │   └── tests/
 │       ├── unit/                 # modül başına
 │       ├── lookahead/            # look-ahead bias testleri
-│       ├── integration/          # DB + scheduler + API uçtan uca (ağ yok)
+│       ├── integration/          # DB + engine + API uçtan uca (ağ yok)
 │       └── fixtures/             # sentetik seriler, kaydedilmiş API yanıtları
 └── frontend/
     ├── package.json  vite.config.ts  tsconfig.json  tailwind.config.ts  eslint.config.js
     ├── Dockerfile  nginx.conf
     └── src/
         ├── main.tsx
-        ├── app/                  # router, providers, layout (Shell, Sidebar, Topbar, StatusBar)
+        ├── app/                  # router, providers, layout (Shell, Sidebar, Topbar, DataStatusStrip, StatusBar)
         ├── api/                  # client.ts, ws.ts, types.gen.ts (OpenAPI'den üretilir), queries/
         ├── components/ui/        # Card, Badge, Button, Table, Tabs, Drawer, Tooltip, Skeleton, Kbd
         ├── components/charts/    # CandleChart (lightweight-charts), LineChart, BarChart, CalibrationCurve, Sparkline
         ├── components/domain/    # ProbabilityGauge, ConfidenceBadge, ScoreBar, ModuleBreakdown, RationaleList, NewsCard, AlertBell, DataHealthDot
-        ├── features/             # dashboard/, coin/, news/, predictions/, calibration/, settings/
+        ├── features/             # dashboard/, coin/, news/, predictions/, calibration/, settings/, costs/
         ├── lib/                  # format.ts, time.ts, notifications.ts, sound.ts
         ├── i18n/tr.ts            # tüm arayüz metinleri
         └── styles/               # tokens.css (renk/boşluk/font değişkenleri), globals.css
@@ -146,7 +157,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 - **Tip ipuçları zorunlu.** `mypy --strict` temiz geçer. `Any` yalnızca dış kütüphane sınırında ve
   `# type: ignore[kod]` gerekçeli.
 - `ruff` hem lint hem format. Satır uzunluğu 100. Import sırası ruff'a bırakılır.
-- **asyncio** her yerde: collector'lar, scheduler, API. Bloklayan iş (pandas hesapları, yfinance, LLM SDK
+- **asyncio** her yerde: collector'lar, engine, API. Bloklayan iş (pandas hesapları, yfinance, LLM SDK
   senkron çağrısı yerine `AsyncAnthropic`) `asyncio.to_thread` ile ya da async istemciyle çalışır.
   `time.sleep` yasak.
 - `datetime` her zaman timezone-aware UTC. Naive datetime alan fonksiyon `ValueError` fırlatır.
@@ -157,7 +168,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 - Veri modelleri `pydantic` v2 (`BaseModel`, `frozen=True` mümkünse). DB satırları SQLAlchemy Core
   tabloları; ORM sınıfları yok.
 - **Collector'lar istisna yükseltmez.** Hata → `collector_health` güncellenir, log, backoff, devam.
-  Scheduler asla bir collector yüzünden düşmez.
+  Engine asla bir collector yüzünden düşmez.
 - **Sinyal modülleri saf fonksiyondur.** Girdi `FeatureSnapshot`, çıktı `SignalResult`. Ağ, DB, saat
   erişimi yok. Aynı girdi → aynı çıktı.
 - Göstergeler `features/indicators.py` içinde numpy/pandas ile yazılır; her biri referans değerle test
@@ -228,7 +239,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 
 | Komut | Ne yapar |
 |---|---|
-| `make dev` | api (auto-reload), scheduler ve Vite dev server'ı birlikte başlatır (`honcho start -f Procfile.dev`) |
+| `make dev` | api (auto-reload), engine ve Vite dev server'ı birlikte başlatır (`honcho start -f Procfile.dev`) |
 | `make up` / `make down` | `docker compose up -d --build` / `docker compose down` |
 | `make logs` | compose loglarını takip eder |
 | `make test` | backend pytest + frontend vitest |

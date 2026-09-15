@@ -26,12 +26,13 @@ Görevler
 - [ ] F0-2 `ruff`, `mypy --strict`, `pytest` yapılandırması; `signals → storage` import yasağı (ruff banned-api).
 - [ ] F0-3 `config.py` (pydantic-settings, `MP_` ön eki), `.env.example`, `core/` (Horizon, Symbol, Clock,
       FakeClock, utc_now, floor_to_minute, hata sınıfları) + testleri.
-- [ ] F0-4 `storage/`: engine (WAL, busy_timeout), `tables.py` (tüm §6 tabloları), Alembic ilk migration,
+- [ ] F0-4 `storage/`: DB bağlantısı (WAL, busy_timeout), `tables.py` (tüm §6 tabloları), Alembic ilk migration,
       `Repository` protokolü ve `SqliteRepository` iskeleti, `Outbox` yazıcı/okuyucu + testleri.
-- [ ] F0-5 `scheduler/main.py`: supervisor, heartbeat işi, `SIGTERM` ile temiz kapanış, çift örnek koruması.
+- [ ] F0-5 `engine/main.py`: supervisor, heartbeat işi, `SIGTERM` ile temiz kapanış, çift örnek koruması.
 - [ ] F0-6 `api/app.py`: FastAPI, CORS, `/api/v1/health`, `/ws` (subscribe/ping/pong), outbox relay görevi.
 - [ ] F0-7 Frontend iskeleti: Vite + React + TS strict + Tailwind, `tokens.css` koyu tema, `Shell`
-      (Sidebar/Topbar/StatusBar), 6 boş rota, `WsClient`, `i18n/tr.ts`, eslint/prettier/vitest.
+      (Sidebar / Topbar / **DataStatusStrip** her ekranın üstünde / StatusBar), 7 boş rota (Dashboard, Coin,
+      Haber, Tahminler, Kalibrasyon, Ayarlar, Maliyet), `WsClient`, `i18n/tr.ts`, eslint/prettier/vitest.
 - [ ] F0-8 `make gen-types` (openapi-typescript) ve ilk `types.gen.ts`.
 - [ ] F0-9 `Makefile` (tüm hedefler), `Procfile.dev`, `docker-compose.yml`, iki Dockerfile, `nginx.conf`,
       `.gitignore`, `.dockerignore`, `pre-commit` (ruff, mypy, eslint).
@@ -40,8 +41,9 @@ Görevler
 
 Bitti sayılır
 - `make check` yeşil (backend + frontend).
-- `make dev` üç süreci başlatır; arayüz StatusBar'da WS "bağlı" ve scheduler heartbeat'ini gösterir.
-- `make up` ile aynı sonuç Docker'da; `http://localhost:3000` açılır.
+- `make dev` üç süreci başlatır; veri durumu şeridi WS "bağlı" ve engine heartbeat'ini gösterir.
+- `docker compose up` ile aynı sonuç Docker'da; `http://localhost:3000` açılır ve boş da olsa çalışan bir
+  sayfa görünür. (Bu, kullanıcının Faz 0 başarı ölçütüdür.)
 - `.env` olmadan uygulama anlaşılır hata ile durur (hangi anahtar eksik).
 
 ---
@@ -53,14 +55,14 @@ yok; baseline tahminler defteri uçtan uca kullanıyor. Arayüzde fiyat kartlar�
 kalibrasyon grafiği var.
 
 Görevler
-- [ ] F1-1 `scheduler/ratelimit.py`: `exchangeInfo`'dan limit okuma, token bucket, `X-MBX-USED-WEIGHT-1M`
+- [ ] F1-1 `engine/ratelimit.py`: `exchangeInfo`'dan limit okuma, token bucket, `X-MBX-USED-WEIGHT-1M`
       senkronu, 429/418 davranışı + testleri (respx).
 - [ ] F1-2 Binance HTTP istemcisi (httpx, retry/backoff, zaman damgası normalizasyonu) + testleri.
 - [ ] F1-3 `collectors/spot_klines`: REST backfill (1m/5m/15m/1h/4h/1d, sayfalama), boşluk denetimi,
       yalnızca kapanmış mum yazma, idempotent upsert + testleri (kaydedilmiş yanıt fixture'ları).
 - [ ] F1-4 `collectors/binance_ws` altyapısı: combined stream, yeniden bağlanma, 23. saat planlı yenileme,
       `kline_1m` işleyicisi (`x=true` filtresi) + sahte akış testleri.
-- [ ] F1-5 `scheduler/jobs.py`: duvar saatine hizalı `Job`, `predict_*` tetikleri (+10 sn), `resolve`,
+- [ ] F1-5 `engine/jobs.py`: duvar saatine hizalı `Job`, `predict_*` tetikleri (+10 sn), `resolve`,
       `gap_check`, `retention`, `health_heartbeat`; `FakeClock` ile testler (tetik anları, kaçırılan tetik
       davranışı).
 - [ ] F1-6 `tracking/ledger.py`: tahmin + modül skorları tek transaction; `non_overlapping` bayrağı; `source`
@@ -79,9 +81,10 @@ Görevler
       `health.changed`.
 - [ ] F1-12 Frontend: Dashboard (CoinCard: canlı fiyat + baseline olasılık placeholder'ı + DataHealthDot),
       Tahmin geçmişi tablosu (filtre + cursor sayfalama + Drawer), Kalibrasyon ekranının Brier serisi ve
-      kalibrasyon eğrisi (baseline verisiyle), StatusBar sağlık özeti.
+      kalibrasyon eğrisi (baseline verisiyle), `DataStatusStrip` gerçek collector verisiyle (çalışıyor / son
+      güncelleme / kopuk).
 - [ ] F1-13 `make backfill` CLI (klines; ileride diğer setler eklenir).
-- [ ] F1-14 Retention işi (candles 1m 90 gün, outbox 24 saat) + testi.
+- [ ] F1-14 Retention işi (outbox 24 saat; klines silinmez, K21) + testi.
 
 Bitti sayılır
 - 3 sembol için 1m..1d mumlar canlı akıyor; WS kesilince boşluk 5 dk içinde REST ile dolmuş oluyor (test ve
@@ -159,38 +162,58 @@ Bitti sayılır
 
 ---
 
-## Faz 4 — Haber + LLM + veto (3 oturum)
+## Faz 4 — Haber + iki kademeli LLM + veto + maliyet (4 oturum)
 
-**Amaç:** RSS akışı toplanıyor, tekrarlar birleştiriliyor, Claude ile sınıflandırılıyor, haber modülü ve
-veto çalışıyor, haber ekranı açık.
+**Amaç:** RSS akışı toplanıyor, tekrarlar birleştiriliyor, her haber Kademe 1 (Haiku) ile eleniyor, önemli
+haberler Kademe 2 (Sonnet) ile derin analiz ediliyor, haber modülü ve veto çalışıyor. Her haberin sonraki
+fiyat hareketi kaydediliyor; Maliyet ekranı ve `/costs` açık.
 
 Görevler
 - [ ] F4-1 `collectors/rss` (4 kaynak, koşullu istek, `published_at` normalizasyonu) + testleri (kaydedilmiş
       feed fixture'ları). `collectors/cryptopanic` (token varsa) + testi.
 - [ ] F4-2 `llm/dedup.py`: URL kanonikleştirme, başlık token Jaccard, grup başı seçimi + testleri.
-- [ ] F4-3 `llm/client.py` (`AsyncAnthropic`, `messages.parse`, sistem promptu + `cache_control`, hata
-      sınıfları ayrımı), `llm/news_classifier.py` (parti, şema, `<item>` sarma, talimat yok sayma cümlesi),
-      `llm/budget.py` (`llm_usage`, günlük tavan) + testleri (SDK çağrısı mock'lanır; gerçek API'ye çıkan
+- [ ] F4-3 `llm/client.py`: `AsyncAnthropic`, `messages.parse`, sabit sistem promptu + `cache_control`, hata
+      sınıfı ayrımı (429/5xx backoff, 4xx down); `llm/budget.py`: `llm_usage` (model + kademe), günlük tavan,
+      kademe bazlı kapanma sırası (önce Kademe 2, sonra Kademe 1) + testleri (SDK mock; gerçek API'ye çıkan
       test yok).
-- [ ] F4-4 `collectors/news_classifier` işi (yeni haber → parti → sınıflandırma; miras kopyalama; bütçe
-      aşımında durma; `budget_exhausted` health) + testleri.
-- [ ] F4-5 `FeatureStore`: news veri seti (`published_at + gecikme` kesmesi) + `truncation_invariance`.
-- [ ] F4-6 `signals/news.py`: decay, ilgi, kategori bileşenleri, veto bayrağı + unit testleri
-      (yarı ömür, tekrar sayılmaması, veto eşiği) + `future_perturbation`.
-- [ ] F4-7 `ensemble/veto.py`: haber vetosu davranışı (ağırlık ezme, `p_up` harmanı, güven `low`, rapor
+- [ ] F4-4 `llm/tier1.py` (Haiku): kategori, ilgili coinler, kaba ton, önem 0–1; parti 20; `<item>` sarma ve
+      talimat yok sayma; şema testi.
+- [ ] F4-5 `llm/tier2.py` (Sonnet): tek haber, derin analiz şeması (fiyatlanmış mı, güvenilirlik, ikinci
+      derece etkiler, benzer geçmiş olay, etki, güven, ufuk, gerekçe); `llm/router.py`: `importance >
+      MP_LLM_TIER2_THRESHOLD` ise Kademe 2'ye yönlendirme, bütçe kontrolü + testleri.
+- [ ] F4-6 `collectors/news_tier1` ve `collectors/news_tier2` işleri (kuyruk, parti, miras kopyalama, bütçe
+      aşımında durma, `budget_exhausted` health) + testleri.
+- [ ] F4-7 `FeatureStore`: news veri seti (`published_at + gecikme` kesmesi; Kademe 2 varsa onun etkisi,
+      yoksa Kademe 1 tonu) + `truncation_invariance`.
+- [ ] F4-8 `signals/news.py`: decay, ilgi, kategori bileşenleri, Kademe 1/2 ağırlıklandırması, veto bayrağı
+      (yalnızca Kademe 2) + unit testleri (yarı ömür, tekrar sayılmaması, veto eşiği) + `future_perturbation`.
+- [ ] F4-9 `ensemble/veto.py`: haber vetosu davranışı (ağırlık ezme, `p_up` harmanı, güven `low`, rapor
       başlığı) + testleri.
-- [ ] F4-8 Şablonlar: haber gerekçeleri ve veto metinleri; yasak kelime testi güncel.
-- [ ] F4-9 API: `GET /news` (filtreler, cursor); outbox `news.classified`; `/config` içinde LLM durumu.
-- [ ] F4-10 Frontend: Haber akışı ekranı (`NewsFilters`, `NewsCard`, `ImpactBadge`, grup boyutu, kategori
-      dağılımı); Coin detay ve Dashboard'da veto rozeti; `ModuleBreakdown`'da haber maddeleri.
-- [ ] F4-11 Retention: news 180 gün. `weights` tablosu: news aktif.
+- [ ] F4-10 `tracking/news_outcomes.py`: her haber için 1s/4s/24s sonrası fiyat hareketi (ilgili semboller),
+      kademe bazlı isabet (`sign(etki) == sign(getiri)`), Kademe 1 vs Kademe 2 karşılaştırma metrikleri +
+      testleri; `news_outcomes` işi.
+- [ ] F4-11 Şablonlar: haber gerekçeleri ve veto metinleri; yasak kelime testi güncel.
+- [ ] F4-12 API: `GET /news` (filtreler, cursor, kademe alanları), `GET /costs` (günlük/aylık, model ve kademe
+      kırılımı, tavan, kalan), `GET /calibration/news-tiers`; outbox `news.classified`; `/config` içinde LLM
+      durumu ve bütçe tavanı.
+- [ ] F4-13 Frontend: Haber akışı ekranı (`NewsFilters`, `NewsCard`, `ImpactBadge`, `TierBadge` "Haiku" /
+      "Haiku+Sonnet", grup boyutu, kategori dağılımı); Coin detay ve Dashboard'da veto rozeti;
+      `ModuleBreakdown`'da haber maddeleri.
+- [ ] F4-14 Frontend: Maliyet ekranı (`/costs`): bugün / bu ay harcama, tavan ve kalan, kademe ve model
+      kırılımı, günlük seri (Recharts), bütçe aşımı durumu. Ayarlar ekranında bütçe tavanı alanı (F6-6 ile
+      birleşir).
+- [ ] F4-15 Frontend: Kalibrasyon ekranına "Haber kademe isabeti" kartı (Haiku vs Sonnet, ufuk bazlı, n ile).
+- [ ] F4-16 Retention: news 180 gün. `weights` tablosu: news aktif.
 
 Bitti sayılır
-- Bir günlük gerçek akışta tekrar oranı ve sınıflandırma maliyeti loglanmış; günlük maliyet tavanın altında.
-- Sınıflandırma çıktısı her zaman şemaya uyuyor (parse hatası sıfır); bütçe aşımı simülasyonunda modül
-  "veri yok" diyor ve sistem devam ediyor.
-- Veto senaryosu testi: sentetik "çok negatif, güven 0.9" haberi teknik yukarı sinyalini eziyor ve rapor
-  başında uyarı var.
+- Bir günlük gerçek akışta tekrar oranı, Kademe 2'ye giden haber oranı ve maliyet loglanmış; günlük maliyet
+  tavanın altında ve Maliyet ekranında görünüyor.
+- Sınıflandırma çıktısı her zaman şemaya uyuyor (parse hatası sıfır). Bütçe aşımı simülasyonunda önce
+  Kademe 2 kapanıyor, Haiku devam ediyor; ikisi kapanınca modül "veri yok" diyor ve tahmin yine üretiliyor.
+- Veto senaryosu testi: sentetik "çok negatif, güven 0.9" Kademe 2 haberi teknik yukarı sinyalini eziyor ve
+  rapor başında uyarı var.
+- `news_outcomes` 24 saat sonra dolmuş; kalibrasyon ekranında Haiku vs Sonnet isabeti n değerleriyle
+  görünüyor.
 
 ---
 
@@ -229,17 +252,17 @@ Bitti sayılır
 yönetiliyor.
 
 Görevler
-- [ ] F6-1 `alerts/rules.py` (§12 tablosu), `alerts/engine.py` (değerlendirme, `dedup_key`, cooldown, outbox)
+- [ ] F6-1 `alerts/rules.py` (§12 tablosu), `alerts/evaluator.py` (değerlendirme, `dedup_key`, cooldown, outbox)
       + testleri (her kural için tetiklenen/tetiklenmeyen örnek, cooldown).
 - [ ] F6-2 `settings` tablosu: eşikler, bildirim eşiği, semboller; `PUT /config` doğrulamaları
       (`exchangeInfo` sembol kontrolü, ağırlık toplamı 1.0, eşik aralıkları) + testleri.
-- [ ] F6-3 Scheduler `settings.changed` izleyicisi: sembol değişince WS akışlarını yeniden başlatma, yeni
+- [ ] F6-3 Engine `settings.changed` izleyicisi: sembol değişince WS akışlarını yeniden başlatma, yeni
       sembol backfill kuyruğu + testleri.
 - [ ] F6-4 API: `GET /alerts`, `POST /alerts/ack`, `GET/PUT /config` tam; outbox `alert.created`.
 - [ ] F6-5 Frontend: `AlertBell` + sayaç + liste + okundu; `lib/notifications.ts` (izin akışı, `tag`,
       görünürlük kuralı), `lib/sound.ts` (Web Audio ton, tercih localStorage); Dashboard `AlertStrip`.
 - [ ] F6-6 Frontend: Ayarlar ekranı — semboller, eşikler, ağırlık tablosu (toplam doğrulaması, varsayılana
-      dön), bildirim (izin/eşik/ses), LLM (bütçe, bugünkü harcama), sistem sağlığı.
+      dön), bildirim (izin/eşik/ses), LLM (bütçe tavanı, Kademe 2 eşiği, bugünkü harcama), sistem sağlığı.
 - [ ] F6-7 Retention: alerts 90 gün.
 
 Bitti sayılır
@@ -327,6 +350,7 @@ Bitti sayılır
 ## Sonraya bırakılanlar (bu fazlarda yapılmaz)
 
 - Message Batches API ile toplu haber sınıflandırma (`llm/batch.py`) — geçmiş haber arşivi olursa.
+- Kademe 2 için daha güçlü model denemesi — yalnızca Haiku vs Sonnet ölçümü (K20) Sonnet'in değerini gösterdikten sonra.
 - Ücretli geçmiş türev verisi (OI/likidasyon) ile order flow backtest'i — bütçe kararı.
 - TimescaleDB geçişi (§20) — SQLite darboğaz olursa.
 - Yeni coin için LLM şema `Literal` güncellemesinin otomasyonu.
