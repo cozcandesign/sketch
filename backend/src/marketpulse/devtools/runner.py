@@ -25,8 +25,12 @@ from marketpulse.devtools.procs import (
     HEALTHY_RUN_SEC,
     RunningProcess,
     backoff_delay,
+    describe_pids,
     find_own_processes,
+    is_own_process,
+    own_process_chain,
     port_is_busy,
+    port_listener_pids,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -35,6 +39,9 @@ API_PORT = 8000
 WEB_PORT = 3000
 POLL_SEC = 0.4
 STOP_GRACE_SEC = 8.0
+# Öldürülen sürecin portu bırakması anlık değildir; bu süre boyunca beklenir.
+PORT_FREE_TIMEOUT_SEC = 8.0
+PORT_POLL_SEC = 0.3
 
 
 @dataclass(frozen=True)
@@ -200,7 +207,8 @@ class Supervisor:
 
 def stop_stale_processes(*, clean: bool = True) -> list[RunningProcess]:
     """Bu depoya ait eski süreçleri bulur; `clean` ise durdurur. Bulunanları döner."""
-    own_pids = {os.getpid(), os.getppid()}
+    # Kendimiz + atalarımız (make, kullanıcının kabuğu, terminal) listeden çıkarılır.
+    own_pids = own_process_chain(os.getpid())
     stale = find_own_processes(str(REPO_ROOT), exclude_pids=own_pids)
     if not stale:
         return []
@@ -230,6 +238,46 @@ def check_ports() -> list[int]:
     return [port for port in (API_PORT, WEB_PORT) if port_is_busy(port)]
 
 
+def wait_for_ports_free(timeout: float = PORT_FREE_TIMEOUT_SEC) -> list[int]:
+    """Portlar boşalana kadar bekler. Dolu kalanları döner."""
+    deadline = time.monotonic() + timeout
+    busy = check_ports()
+    while busy and time.monotonic() < deadline:
+        time.sleep(PORT_POLL_SEC)
+        busy = check_ports()
+    return busy
+
+
+def free_own_ports(busy: list[int]) -> list[int]:
+    """Portu tutan süreç bize aitse durdurur. Hâlâ dolu kalan portları döner.
+
+    Eski yığının uvicorn reload çocuğu gibi, komut satırında paket adı geçmeyen süreçler
+    `ps` taramasına takılmayabiliyor; portun sahibinden gitmek bu boşluğu kapatır.
+    """
+    if not busy:
+        return []
+    killed = False
+    for port in busy:
+        for process in describe_pids(port_listener_pids(port)):
+            if not is_own_process(process.command, str(REPO_ROOT)):
+                continue
+            print(f"dev    | {port} portunu tutan eski sürecimiz durduruluyor: pid {process.pid}")
+            _terminate(process.pid, force=True)
+            killed = True
+    return wait_for_ports_free(PORT_FREE_TIMEOUT_SEC if killed else 0.0)
+
+
+def _describe_busy_port(port: int) -> str:
+    owners = describe_pids(port_listener_pids(port))
+    if not owners:
+        return f"dev    | {port} portu başka bir program tarafından kullanılıyor."
+    owner = owners[0]
+    return (
+        f"dev    | {port} portu bize ait olmayan bir program tarafından kullanılıyor: "
+        f"pid {owner.pid} — {owner.command[:90]}"
+    )
+
+
 def preflight(*, clean: bool = True) -> bool:
     """Başlamadan önceki denetimler. False dönerse başlatma yapılmaz."""
     if not (REPO_ROOT / ".env").is_file():
@@ -239,13 +287,11 @@ def preflight(*, clean: bool = True) -> bool:
         print(f"dev    | HATA: backend ortamı yok ({VENV_PYTHON}). Once: make install")
         return False
     stop_stale_processes(clean=clean)
-    busy = check_ports()
+    busy = free_own_ports(wait_for_ports_free())
     if busy:
-        ports = ", ".join(str(port) for port in busy)
-        print(
-            f"dev    | HATA: {ports} portu bize ait olmayan bir program tarafından kullanılıyor.\n"
-            f"dev    | O programı kapatın ya da `lsof -i :{busy[0]}` ile kimin tuttuğuna bakın."
-        )
+        for port in busy:
+            print(_describe_busy_port(port))
+        print(f"dev    | HATA: o programı kapatın ya da `lsof -i :{busy[0]}` ile bakın.")
         return False
     return True
 

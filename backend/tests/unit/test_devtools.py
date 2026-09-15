@@ -7,13 +7,18 @@ import time
 
 import pytest
 
+from marketpulse.devtools import runner as runner_module
 from marketpulse.devtools.procs import (
     RESTART_CAP_SEC,
     RunningProcess,
+    ancestor_pids,
     backoff_delay,
+    describe_pids,
     find_own_processes,
     is_own_process,
+    parse_lsof_pids,
     parse_ps_output,
+    parse_ps_parents,
     port_is_busy,
 )
 from marketpulse.devtools.runner import ProcessSpec, Supervisor
@@ -43,6 +48,12 @@ def test_parse_ps_output() -> None:
         "python -m uvicorn marketpulse.api.app:create_app --factory",
         "python -m marketpulse.devtools.runner",
         "node /home/user/sketch/frontend/node_modules/.bin/vite",
+        # uvicorn --reload'un asıl sunucu çocuğu: komut satırında paket adı geçmez, yalnızca
+        # bu deponun venv python'u görünür. Tanınmazsa 8000 portunu tutmaya devam ediyordu.
+        (
+            "/home/user/sketch/backend/.venv/bin/python -c "
+            "from multiprocessing.spawn import spawn_main; spawn_main(tracker_fd=7)"
+        ),
     ],
 )
 def test_recognises_own_processes(command: str) -> None:
@@ -56,6 +67,10 @@ def test_recognises_own_processes(command: str) -> None:
         "postgres -D /var/lib/postgresql",
         "python -m http.server 3000",
         "npm --prefix /somewhere/else run dev",
+        # Kullanıcının kendi kabuğu ve `make`: depo yolunu taşısalar bile asla öldürülmez.
+        "/bin/bash -c source /home/user/sketch/.venv/bin/activate && npm run dev",
+        "-zsh",
+        "make dev",
     ],
 )
 def test_leaves_foreign_processes_alone(command: str) -> None:
@@ -75,26 +90,17 @@ def test_find_own_processes_excludes_self() -> None:
 
 
 def test_port_is_busy_detects_a_listening_socket() -> None:
+    """Dolu port bind denemesiyle anlaşılır; süreçler arası bağlanma denemesi güvenilir değil."""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(("127.0.0.1", 0))
     server.listen(1)
     port = server.getsockname()[1]
-    accepting = threading.Thread(target=lambda: _accept_once(server), daemon=True)
-    accepting.start()
     try:
         assert port_is_busy(port)
     finally:
         server.close()
     assert not port_is_busy(port)
-
-
-def _accept_once(server: socket.socket) -> None:
-    try:
-        connection, _ = server.accept()
-        connection.close()
-    except OSError:
-        return
 
 
 def test_supervisor_restarts_a_crashing_process_without_touching_others() -> None:
@@ -123,3 +129,60 @@ def test_supervisor_restarts_a_crashing_process_without_touching_others() -> Non
     assert len(steady_starts) == 1  # sağlam süreç yeniden başlatılmadı
     assert any("çıkış kodu 3" in line for line in lines)
     assert any("Diğer süreçler çalışmaya devam ediyor" in line for line in lines)
+
+
+def test_parse_lsof_pids_keeps_unique_numbers_only() -> None:
+    assert parse_lsof_pids("  4321\n4321\n\nbozuk\n99\n") == [4321, 99]
+
+
+def test_describe_pids_returns_commands_for_wanted_pids() -> None:
+    ps_text = "10 python -m marketpulse.engine\n11 postgres -D /var/lib/postgresql"
+    assert describe_pids([11, 12], ps_text=ps_text) == [
+        RunningProcess(11, "postgres -D /var/lib/postgresql")
+    ]
+
+
+def test_free_own_ports_kills_our_port_holder(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Eski yığının port tutan sürecini durdurur; sahibi bizsek `make dev` durmamalı."""
+    killed: list[int] = []
+    owner = f"{runner_module.REPO_ROOT}/backend/.venv/bin/python -c spawn_main"
+    monkeypatch.setattr(runner_module, "port_listener_pids", lambda _port: [4321])
+    monkeypatch.setattr(runner_module, "describe_pids", lambda _pids: [RunningProcess(4321, owner)])
+    monkeypatch.setattr(runner_module, "_terminate", lambda pid, force=False: killed.append(pid))
+    monkeypatch.setattr(runner_module, "wait_for_ports_free", lambda timeout=0.0: [])
+
+    assert runner_module.free_own_ports([8000]) == []
+    assert killed == [4321]
+
+
+def test_free_own_ports_never_kills_a_foreign_program(monkeypatch: pytest.MonkeyPatch) -> None:
+    killed: list[int] = []
+    monkeypatch.setattr(runner_module, "port_listener_pids", lambda _port: [777])
+    monkeypatch.setattr(
+        runner_module, "describe_pids", lambda _pids: [RunningProcess(777, "postgres -D /var/lib")]
+    )
+    monkeypatch.setattr(runner_module, "_terminate", lambda pid, force=False: killed.append(pid))
+    monkeypatch.setattr(runner_module, "wait_for_ports_free", lambda timeout=0.0: [8000])
+
+    assert runner_module.free_own_ports([8000]) == [8000]
+    assert killed == []
+
+
+def test_wait_for_ports_free_gives_the_port_time_to_close(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Öldürülen süreç portu hemen bırakmaz; ilk bakışta dolu görmek hata değildir."""
+    answers = iter([[8000], [8000], []])
+    monkeypatch.setattr(runner_module, "check_ports", lambda: next(answers, []))
+    monkeypatch.setattr(runner_module, "PORT_POLL_SEC", 0.01)
+
+    assert runner_module.wait_for_ports_free(timeout=2.0) == []
+
+
+def test_ancestor_chain_covers_make_and_the_users_shell() -> None:
+    """`make dev-stop` kendi kabuğunu öldürmemeli: ata zinciri listeden çıkarılır."""
+    parents = parse_ps_parents("100 1\n200 100\n300 200\n999 1\n")
+    assert ancestor_pids(300, parents) == {300, 200, 100, 1}
+    assert 999 not in ancestor_pids(300, parents)
+
+
+def test_ancestor_chain_survives_a_pid_loop() -> None:
+    assert ancestor_pids(5, {5: 6, 6: 5}) == {5, 6}

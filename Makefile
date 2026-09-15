@@ -12,6 +12,10 @@ NPM := npm --prefix frontend
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo bilinmiyor)
 export MP_GIT_SHA = $(GIT_SHA)
 
+# Geliştirme aracı doğrudan kaynaktan koşar (PYTHONPATH): paket kurulumu eskimiş olsa bile
+# (ör. yeni bir pull'dan hemen sonra) `make dev-stop` çalışır.
+DEV_RUNNER = PYTHONPATH=backend/src backend/.venv/bin/python -m marketpulse.devtools.runner
+
 help: ## Komut listesi
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
@@ -21,10 +25,12 @@ install: ## Bağımlılıkları kur (uv sync + npm install)
 
 dev: ensure-deps ## api + engine + arayüz; süreçler bağımsız, çöken kendiliğinden yeniden başlar
 	@test -f .env || (echo "HATA: .env yok. Once sunu calistirin: cp .env.example .env" && exit 1)
-	backend/.venv/bin/python -m marketpulse.devtools.runner
+	$(DEV_RUNNER)
 
 dev-stop: ## Arka planda kalmış geliştirme süreçlerini durdur
-	@backend/.venv/bin/python -m marketpulse.devtools.runner --stop
+	@test -x backend/.venv/bin/python \
+		&& $(DEV_RUNNER) --stop \
+		|| echo "dev    | backend ortami yok, durdurulacak surec de yok (gerekirse: make install)"
 
 # Ortam senkronu BURADA, bir kez yapılır. Süreçler sonra doğrudan venv python'u kullanır; böylece
 # eşzamanlı `uv run` senkronu ve ondan doğabilecek "No module named marketpulse" yarışı olmaz.
