@@ -10,6 +10,7 @@ import {
   levels,
   marketState,
   mockApi,
+  orderflow,
   predictionPage,
   signals,
 } from '@/test/mockApi'
@@ -24,6 +25,7 @@ function renderCoin(path = '/coin/BTCUSDT') {
     '/levels': levels,
     '/signals/': signals,
     '/predictions': predictionPage,
+    '/orderflow': orderflow,
     '/market/BTCUSDT': marketState,
   })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -49,8 +51,29 @@ describe('Coin detay ekranı', () => {
     renderCoin()
 
     expect(await screen.findByText(/güven düşük/i)).toBeInTheDocument()
-    expect(screen.getByText(/orderflow/)).toBeInTheDocument()
-    expect(screen.getByText(/yalnızca teknik modül/)).toBeInTheDocument()
+    // Eksik modüller Türkçe adlarıyla listelenir, kod adlarıyla değil.
+    expect(screen.getByText(/haber, makro, duyarlılık/)).toBeInTheDocument()
+    expect(screen.getByText(/2\/5 modül veri veriyor \(teknik, order flow\)/)).toBeInTheDocument()
+  })
+
+  it('order flow panellerini ve dinlenen süreyi gösterir', async () => {
+    renderCoin()
+
+    expect(await screen.findByText('Funding')).toBeInTheDocument()
+    expect(screen.getByText('Açık pozisyon')).toBeInTheDocument()
+    expect(screen.getByText('Zorunlu kapatmalar')).toBeInTheDocument()
+    expect(screen.getByText('Order book')).toBeInTheDocument()
+    expect(screen.getByText(/Kümülatif hacim farkı/)).toBeInTheDocument()
+    // Kapsama rozeti her zaman görünür: kesinti olduğunda kullanıcı bunu görmeli (K22).
+    expect(screen.getByText(/dinlenen süre %99/)).toBeInTheDocument()
+  })
+
+  it('order flow bileşenlerini modül kırılımında Türkçe adlandırır', async () => {
+    renderCoin()
+
+    expect(await screen.findByRole('meter', { name: 'order flow' })).toBeInTheDocument()
+    expect(screen.getByText('açık pozisyon + fiyat')).toBeInTheDocument()
+    expect(screen.getByText('agresif akış (CVD)')).toBeInTheDocument()
   })
 
   it('tahmini olmayan ufka geçilince bunu açıkça söyler', async () => {

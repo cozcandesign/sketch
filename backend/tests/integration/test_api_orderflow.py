@@ -91,6 +91,7 @@ async def _seed(settings: Settings) -> None:
                 symbol=SYMBOL,
                 ts=NOW - timedelta(hours=24) + timedelta(minutes=5 * index),
                 oi=1000.0 + index,
+                oi_value_usd=(1000.0 + index) * 60_000,
                 source="hist",
             )
             for index in range(0, 288)
@@ -159,6 +160,8 @@ def test_open_interest_reports_the_daily_change(client: TestClient, settings: Se
     oi = client.get(f"/api/v1/market/{SYMBOL}/orderflow").json()["open_interest"]
 
     assert oi["latest"] == pytest.approx(1287.0)
+    # Sözleşme adedi ve USD karşılığı ayrı alanlar: arayüz adedi dolar sanmasın.
+    assert oi["latest_usd"] == pytest.approx(1287.0 * 60_000)
     assert oi["change_24h"] == pytest.approx(287 / 1000.0, rel=0.01)
 
 

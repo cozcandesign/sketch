@@ -36,10 +36,14 @@ def funding_zscore(current: float | None, history: list[FundingRate]) -> float |
 def open_interest_summary(rows: list[OpenInterestPoint]) -> OpenInterestOut:
     """Son açık pozisyon ve pencere başına göre oransal değişim."""
     if not rows:
-        return OpenInterestOut(latest=None, ts=None, change_24h=None)
+        return OpenInterestOut(latest=None, latest_usd=None, ts=None, change_24h=None)
     latest, first = rows[-1], rows[0]
     change = (latest.oi / first.oi - 1.0) if first.oi else None
-    return OpenInterestOut(latest=latest.oi, ts=latest.ts, change_24h=change)
+    # USD karşılığı yalnızca 'hist' satırlarında var; anlık okumada en son bilinen değere düşülür.
+    latest_usd = next(
+        (row.oi_value_usd for row in reversed(rows) if row.oi_value_usd is not None), None
+    )
+    return OpenInterestOut(latest=latest.oi, latest_usd=latest_usd, ts=latest.ts, change_24h=change)
 
 
 def coverage_ratio(flow: list[OrderflowRow], minutes: int) -> float:

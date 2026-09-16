@@ -107,9 +107,16 @@ class FundingOut(BaseModel):
 
 
 class OpenInterestOut(BaseModel):
+    """`latest` sözleşme adedi (baz varlık cinsinden), `latest_usd` aynı anın USD karşılığı.
+
+    İkisi ayrı tutulur: USD karşılığını yalnızca `openInterestHist` verir, anlık okumada yoktur.
+    Arayüz adedi dolar sanmasın diye alan adları birimi taşır.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     latest: float | None
+    latest_usd: float | None = None
     ts: datetime | None
     change_24h: float | None  # oransal değişim
 

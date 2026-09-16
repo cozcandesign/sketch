@@ -5,6 +5,7 @@ import type {
   HealthResponse,
   Levels,
   MarketState,
+  Orderflow,
   PredictionPage,
   Signals,
 } from '@/api/types'
@@ -281,6 +282,20 @@ export const signals: Signals = {
           components: { trend: 0.6, momentum: 0.2, volume: 0.1, sr: -0.2, vol_regime: 0.1 },
           rationale: ['EMA dizilimi yukarı yönlü', 'RSI 58'],
         },
+        {
+          module: 'orderflow',
+          score: 0.12,
+          confidence: 0.4,
+          coverage: 0.92,
+          components: {
+            funding_dev: -0.1,
+            oi_price: 0.3,
+            liquidations: 0.05,
+            book_imbalance: 0.08,
+            cvd: 0.15,
+          },
+          rationale: ['Açık pozisyon +%2,1 artarken fiyat +%0,8 yükseldi: yeni pozisyon girişi'],
+        },
       ],
       report: {
         headline: 'BTC · 1 saat · Yukarı olasılığı %68 · Güven: düşük',
@@ -288,8 +303,8 @@ export const signals: Signals = {
         counter_argument: 'Beni yanıltacak şey: destek/direnç tahminin tersine işaret ediyor.',
         expected_range: { low: 62_000, high: 63_600 },
         confidence: { value: 0.18, label: 'low' },
-        data_coverage: { technical: 1 },
-        missing: ['orderflow', 'news', 'macro', 'sentiment'],
+        data_coverage: { technical: 1, orderflow: 0.92 },
+        missing: ['news', 'macro', 'sentiment'],
       },
     },
     {
@@ -346,4 +361,79 @@ export const candles: Candles = {
     close: 62_050 + index * 10,
     volume: 120 + index,
   })),
+}
+
+/**
+ * Order flow paneli: 120 dakikalık pencere. `coverage_seconds` iki dakikada 30 saniyeye düşer —
+ * kesintinin arayüzde görünür kaldığını test edebilmek için (K22).
+ */
+export const orderflow: Orderflow = {
+  symbol: 'BTCUSDT',
+  minutes: Array.from({ length: 120 }, (_, index) => {
+    const ts = new Date(Date.UTC(2026, 0, 1, 10, 0) + index * 60_000).toISOString()
+    const delta = index % 3 === 0 ? -4 : 6
+    return {
+      ts,
+      buy_vol: 60,
+      sell_vol: 54,
+      cvd_delta: delta,
+      cvd_cumulative: 0,
+      trade_count: 900,
+      liq_long_usd: index === 30 ? 250_000 : 0,
+      liq_short_usd: index === 75 ? 180_000 : 0,
+      top20_imbalance: 0.12,
+      depth1pct_imbalance: 0.08,
+      spread_bps: 1.2,
+      coverage_seconds: index === 40 || index === 41 ? 30 : 60,
+    }
+  }).map((point, index, all) => ({
+    ...point,
+    cvd_cumulative: all.slice(0, index + 1).reduce((sum, row) => sum + (row.cvd_delta ?? 0), 0),
+  })),
+  liquidations: [
+    {
+      ts: '2026-01-01T10:30:00Z',
+      side: 'long',
+      qty: 4,
+      price: 62_500,
+      usd: 250_000,
+    },
+    {
+      ts: '2026-01-01T11:15:00Z',
+      side: 'short',
+      qty: 2.9,
+      price: 62_900,
+      usd: 180_000,
+    },
+  ],
+  funding: {
+    last_rate: 0.00021,
+    next_funding_time: '2026-01-01T16:00:00Z',
+    mark_price: 63_010,
+    average_30d: 0.00008,
+    zscore: 1.8,
+  },
+  open_interest: {
+    latest: 82_140,
+    latest_usd: 5_174_820_000,
+    ts: '2026-01-01T11:55:00Z',
+    change_24h: 0.031,
+  },
+  long_short: [
+    {
+      kind: 'global_account',
+      long_ratio: 0.55,
+      short_ratio: 0.45,
+      ratio: 1.22,
+      ts: '2026-01-01T11:55:00Z',
+    },
+    {
+      kind: 'top_account',
+      long_ratio: 0.48,
+      short_ratio: 0.52,
+      ratio: 0.92,
+      ts: '2026-01-01T11:55:00Z',
+    },
+  ],
+  coverage_ratio: 0.99,
 }

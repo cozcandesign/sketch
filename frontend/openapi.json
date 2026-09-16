@@ -1978,6 +1978,17 @@
             ],
             "title": "Latest"
           },
+          "latest_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Usd"
+          },
           "ts": {
             "anyOf": [
               {
@@ -2008,7 +2019,8 @@
           "ts",
           "change_24h"
         ],
-        "title": "OpenInterestOut"
+        "title": "OpenInterestOut",
+        "description": "`latest` sözleşme adedi (baz varlık cinsinden), `latest_usd` aynı anın USD karşılığı.\n\nİkisi ayrı tutulur: USD karşılığını yalnızca `openInterestHist` verir, anlık okumada yoktur.\nArayüz adedi dolar sanmasın diye alan adları birimi taşır."
       },
       "OrderflowOut": {
         "properties": {

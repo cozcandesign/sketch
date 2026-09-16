@@ -587,10 +587,18 @@ export interface components {
       /** Has Proof Sample */
       has_proof_sample: boolean
     }
-    /** OpenInterestOut */
+    /**
+     * OpenInterestOut
+     * @description `latest` sözleşme adedi (baz varlık cinsinden), `latest_usd` aynı anın USD karşılığı.
+     *
+     *     İkisi ayrı tutulur: USD karşılığını yalnızca `openInterestHist` verir, anlık okumada yoktur.
+     *     Arayüz adedi dolar sanmasın diye alan adları birimi taşır.
+     */
     OpenInterestOut: {
       /** Latest */
       latest: number | null
+      /** Latest Usd */
+      latest_usd?: number | null
       /** Ts */
       ts: string | null
       /** Change 24H */

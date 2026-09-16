@@ -51,3 +51,17 @@ export function formatSeconds(seconds: number | null | undefined): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)} dk`
   return `${(seconds / 3600).toFixed(1)} sa`
 }
+
+/**
+ * Büyük USD tutarlarını kısaltır: 1.250.000 → "1,25 Mn $". Likidasyon ve açık pozisyon
+ * panellerinde tam basamak okunmaz; büyüklük sırası okunur.
+ */
+export function formatUsdCompact(value: number | null | undefined): string {
+  if (value == null) return '—'
+  const sign = value < 0 ? '-' : ''
+  const abs = Math.abs(value)
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(2).replace('.', ',')} Mr $`
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(2).replace('.', ',')} Mn $`
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1).replace('.', ',')} B $`
+  return `${sign}${abs.toFixed(0)} $`
+}

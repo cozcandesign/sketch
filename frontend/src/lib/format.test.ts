@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { formatPercent, formatPrice, formatProbability, formatScore } from '@/lib/format'
+import {
+  formatPercent,
+  formatPrice,
+  formatProbability,
+  formatScore,
+  formatUsdCompact,
+} from '@/lib/format'
 
 describe('format', () => {
   it('formats probabilities as whole percentages', () => {
@@ -23,5 +29,13 @@ describe('format', () => {
   it('formats scores with a comma separator', () => {
     expect(formatScore(0.1444)).toBe('0,144')
     expect(formatScore(null)).toBe('—')
+  })
+
+  it('shortens usd amounts by magnitude', () => {
+    expect(formatUsdCompact(2_450_000_000)).toBe('2,45 Mr $')
+    expect(formatUsdCompact(1_250_000)).toBe('1,25 Mn $')
+    expect(formatUsdCompact(-42_500)).toBe('-42,5 B $')
+    expect(formatUsdCompact(120)).toBe('120 $')
+    expect(formatUsdCompact(null)).toBe('—')
   })
 })

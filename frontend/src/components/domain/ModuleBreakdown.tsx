@@ -1,5 +1,5 @@
 import { ScoreBar } from '@/components/domain/ScoreBar'
-import { formatPercent, formatScore } from '@/lib/format'
+import { formatProbability, formatScore } from '@/lib/format'
 import { moduleLabel, componentLabel } from '@/components/domain/moduleLabels'
 import type { ModuleSignal } from '@/api/types'
 import { tr } from '@/i18n/tr'
@@ -23,7 +23,7 @@ export function ModuleBreakdown({ modules }: { modules: ModuleSignal[] }) {
             hint={
               module.coverage === 0
                 ? tr.coin.noData
-                : `${tr.coin.coverage} ${formatPercent(module.coverage, 0)} · ${tr.confidence.label} ${formatScore(module.confidence, 2)}`
+                : `${tr.coin.coverage} ${formatProbability(module.coverage)} · ${tr.confidence.label} ${formatScore(module.confidence, 2)}`
             }
           />
           {module.components && Object.keys(module.components).length > 0 ? (

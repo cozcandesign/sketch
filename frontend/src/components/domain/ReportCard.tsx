@@ -4,6 +4,7 @@ import { ProbabilityGauge } from '@/components/domain/ProbabilityGauge'
 import { ConfidenceBadge } from '@/components/domain/ConfidenceBadge'
 import { RationaleList } from '@/components/domain/RationaleList'
 import { formatPrice } from '@/lib/format'
+import { moduleLabel } from '@/components/domain/moduleLabels'
 import { formatDateTime } from '@/lib/time'
 import type { HorizonSignals } from '@/api/types'
 import { tr } from '@/i18n/tr'
@@ -78,7 +79,7 @@ export function ReportCard({ horizon }: { horizon: HorizonSignals }) {
 
         {report.missing && report.missing.length > 0 ? (
           <p className="text-xs text-muted">
-            {tr.coin.missingModules}: {report.missing.join(', ')}
+            {tr.coin.missingModules}: {report.missing.map(moduleLabel).join(', ')}
           </p>
         ) : null}
       </div>

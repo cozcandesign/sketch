@@ -7,10 +7,12 @@ import { Select } from '@/components/ui/Select'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { CandleChart } from '@/components/charts/CandleChart'
 import { ModuleBreakdown } from '@/components/domain/ModuleBreakdown'
+import { moduleLabel } from '@/components/domain/moduleLabels'
 import { ReportCard } from '@/components/domain/ReportCard'
 import { HorizonTabs } from '@/features/coin/HorizonTabs'
 import { LevelTable } from '@/features/coin/LevelTable'
 import { OverlayToggles, type Overlays } from '@/features/coin/OverlayToggles'
+import { OrderflowSection } from '@/features/coin/OrderflowSection'
 import { useCandles, useMarket, useSymbols } from '@/api/queries/market'
 import { useSignals, useLevels } from '@/api/queries/signals'
 import { usePredictions } from '@/api/queries/predictions'
@@ -23,9 +25,12 @@ import {
   type HorizonKey,
   type IntervalKey,
 } from '@/api/types'
+import type { ModuleSignal } from '@/api/types'
 import { tr } from '@/i18n/tr'
 
 const CANDLE_LIMIT = 400
+/** Ensemble'ın tam modül kümesi (ARCHITECTURE.md §9.1); kaçının veri verdiğini buna göre yazarız. */
+const MODULE_COUNT = 5
 
 export function CoinPage() {
   const { symbol } = useParams()
@@ -147,15 +152,26 @@ function CoinDetail({ symbol }: { symbol: string }) {
           ) : (
             <div className="flex flex-col gap-3">
               <ModuleBreakdown modules={selected?.modules ?? []} />
-              <p className="text-xs text-muted">{tr.coin.singleModuleWarning}</p>
+              <p className="text-xs text-muted">{activeModulesNote(selected?.modules ?? [])}</p>
             </div>
           )}
         </Card>
       </div>
+
+      <OrderflowSection symbol={symbol} priceChange24h={change} />
 
       <Card title={`${tr.coin.levelsTitle} · ${interval}`}>
         <LevelTable levels={levels.data ?? null} />
       </Card>
     </PageFrame>
   )
+}
+
+/** Kaç modülün gerçekten veri verdiğini yazar: "5 modülden 2'si" gibi bir cümle kendini günceller. */
+function activeModulesNote(modules: ModuleSignal[]): string {
+  const active = modules.filter((module) => module.coverage > 0)
+  return tr.coin.activeModules
+    .replace('{active}', String(active.length))
+    .replace('{total}', String(MODULE_COUNT))
+    .replace('{names}', active.map((module) => moduleLabel(module.module)).join(', '))
 }
