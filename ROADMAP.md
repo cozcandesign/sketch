@@ -194,7 +194,7 @@ Görevler
 - [ ] F3-7 API: `GET /market/{symbol}/orderflow`; `/market/{symbol}` içine funding/OI/LS özetleri.
 - [ ] F3-8 Frontend: Coin detay alt panelleri — `FundingPanel`, `OIPanel` (OI + fiyat, durum etiketi),
       `LiquidationPanel`, `OrderBookPanel`, `CVDPanel`; `ModuleBreakdown`'da orderflow bileşenleri.
-- [ ] F3-9 Retention: orderflow_1m ve liquidations 90 gün.
+- [x] F3-9 Retention: orderflow_1m ve liquidations 90 gün.
 
 Bitti sayılır
 - WS akışları 24 saat kesintisiz; `coverage_seconds` ortalaması > 3500/3600.

@@ -20,21 +20,20 @@ async def repo() -> AsyncIterator[SqliteRepository]:
 async def test_tail_yields_new_events_and_stops(repo: SqliteRepository) -> None:
     clock = FakeClock(datetime(2026, 1, 1, tzinfo=UTC))
     outbox = Outbox(repo, clock)
-    await outbox.emit("old", {})  # tail başlamadan önce: yayınlanmamalı
+    old_id = await outbox.emit("old", {})  # tail başlamadan önce: yayınlanmamalı
+    await outbox.emit("a", {"n": 1})
+    await outbox.emit("b", {"n": 2})
     stop = asyncio.Event()
     received: list[str] = []
 
     async def consume() -> None:
-        async for event in outbox.tail(stop, poll_interval=0.01):
+        # Başlangıç noktası açıkça verilir: "tüketici zamanında başladı mı" yarışı olmasın.
+        async for event in outbox.tail(stop, poll_interval=0.01, start_after=old_id):
             received.append(event.topic)
             if len(received) == 2:
                 stop.set()
 
-    task = asyncio.create_task(consume())
-    await asyncio.sleep(0.03)
-    await outbox.emit("a", {"n": 1})
-    await outbox.emit("b", {"n": 2})
-    await asyncio.wait_for(task, timeout=2)
+    await asyncio.wait_for(asyncio.create_task(consume()), timeout=5)
     assert received == ["a", "b"]
 
 

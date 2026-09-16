@@ -1,185 +1,178 @@
-"""Futures order flow akışı: `aggTrade`, `forceOrder`, `depth20@100ms` (ARCHITECTURE.md §4).
-
-Mesajlar `OrderflowAggregator` içinde dakikalık kovalara toplanır; dakika kapandığında
-`orderflow_1m` satırı yazılır. Likidasyonlar ayrıca ham satır olarak saklanır (kümeleme Faz 14).
-
-Ham order book **saklanmaz** (K21): yalnızca top-20 dengesizliği ve spread özeti tutulur.
-"""
+"""Order flow WS toplayıcısı: mesaj ayrıştırma, yazma ve kopma davranışı (ağ yok)."""
 
 import asyncio
 import contextlib
 import json
-from collections.abc import Sequence
-from datetime import timedelta
-from typing import Any, Final
+from collections.abc import AsyncIterator, Iterable
+from datetime import UTC, datetime, timedelta
 
-from loguru import logger
+import pytest
 
-from marketpulse.collectors.orderflow_agg import OrderflowAggregator
-from marketpulse.collectors.ws_stream import ConnectFactory, binance_connect, combined_url
-from marketpulse.core.clock import Clock
-from marketpulse.core.time import from_epoch_ms
+from marketpulse.collectors.orderflow_ws import (
+    OrderflowWsCollector,
+    parse_liquidation,
+    streams_for,
+)
+from marketpulse.collectors.ws_stream import ConnectFactory
+from marketpulse.core.clock import FakeClock
 from marketpulse.engine.health import HealthRegistry
-from marketpulse.storage.models import Liquidation
-from marketpulse.storage.repository import Repository
+from marketpulse.storage import SqliteRepository, make_engine
+from marketpulse.storage.models import OrderflowRow
+from tests.fixtures.binance import ws_agg_trade, ws_depth20, ws_force_order
 
-COLLECTOR_NAME: Final = "ws_orderflow"
-PLANNED_RECONNECT: Final = timedelta(hours=23)
-FLUSH_INTERVAL_SEC: Final = 5.0
-DEPTH_STREAM: Final = "depth20@100ms"
-
-
-def streams_for(symbols: Sequence[str]) -> list[str]:
-    """Her sembol için üç akış: işlemler, zorunlu kapatmalar, kitap anlık görüntüsü."""
-    streams: list[str] = []
-    for symbol in symbols:
-        lower = symbol.lower()
-        streams.extend([f"{lower}@aggTrade", f"{lower}@forceOrder", f"{lower}@{DEPTH_STREAM}"])
-    return streams
+T0 = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
+SYMBOL = "BTCUSDT"
 
 
-def parse_liquidation(payload: dict[str, Any]) -> Liquidation | None:
-    """`forceOrder` mesajı → likidasyon satırı.
+def fake_connect(messages: Iterable[dict[str, object]]) -> ConnectFactory:
+    @contextlib.asynccontextmanager
+    async def connect(_url: str) -> AsyncIterator[AsyncIterator[str]]:
+        async def stream() -> AsyncIterator[str]:
+            for message in messages:
+                yield json.dumps(message)
 
-    Binance zorunlu kapatmayı **emir yönüyle** verir: `S=SELL` bir LONG pozisyonun kapatıldığı
-    anlamına gelir (uzun pozisyon satılarak kapanır), `S=BUY` ise SHORT kapanışıdır.
-    """
-    order = payload.get("o")
-    if not isinstance(order, dict):
-        return None
-    filled = float(order.get("z") or order.get("q") or 0.0)
-    price = float(order.get("ap") or order.get("p") or 0.0)
-    if filled <= 0 or price <= 0:
-        return None
-    return Liquidation(
-        symbol=str(order["s"]),
-        ts=from_epoch_ms(int(order.get("T") or payload["E"])),
-        side="long" if str(order.get("S", "")).upper() == "SELL" else "short",
-        qty=filled,
-        price=price,
-        usd=filled * price,
+        yield stream()
+
+    return connect
+
+
+@pytest.fixture
+async def repo() -> AsyncIterator[SqliteRepository]:
+    repository = SqliteRepository(make_engine("sqlite+aiosqlite:///:memory:"))
+    await repository.create_all()
+    yield repository
+    await repository.close()
+
+
+def build(
+    repo: SqliteRepository, clock: FakeClock, messages: Iterable[dict[str, object]]
+) -> OrderflowWsCollector:
+    return OrderflowWsCollector(
+        "wss://test/stream",
+        repo,
+        clock,
+        HealthRegistry(clock),
+        symbols=[SYMBOL],
+        connect=fake_connect(messages),
     )
 
 
-def parse_levels(raw: Any) -> list[tuple[float, float]]:
-    """`[["fiyat","miktar"], ...]` → sayısal çiftler; bozuk satırlar atlanır."""
-    levels: list[tuple[float, float]] = []
-    if not isinstance(raw, list):
-        return levels
-    for item in raw:
-        if isinstance(item, (list, tuple)) and len(item) >= 2:
-            with contextlib.suppress(TypeError, ValueError):
-                levels.append((float(item[0]), float(item[1])))
-    return levels
+def test_every_symbol_subscribes_to_three_streams() -> None:
+    assert streams_for(["BTCUSDT", "ETHUSDT"]) == [
+        "btcusdt@aggTrade",
+        "btcusdt@forceOrder",
+        "btcusdt@depth20@100ms",
+        "ethusdt@aggTrade",
+        "ethusdt@forceOrder",
+        "ethusdt@depth20@100ms",
+    ]
 
 
-class OrderflowWsCollector:
-    """Üç futures akışını dinler, dakikalık özetleri ve likidasyonları yazar."""
+def test_a_forced_sell_is_a_long_liquidation() -> None:
+    """Binance emir yönü verir: SELL → uzun pozisyon kapatıldı."""
+    payload = ws_force_order(SYMBOL, side="SELL", qty=0.5, price=60000.0, ts=T0)["data"]
+    liquidation = parse_liquidation(payload)
 
-    name = COLLECTOR_NAME
+    assert liquidation is not None
+    assert liquidation.side == "long"
+    assert liquidation.usd == pytest.approx(30000.0)
 
-    def __init__(
-        self,
-        ws_base_url: str,
-        repo: Repository,
-        clock: Clock,
-        health: HealthRegistry,
-        *,
-        symbols: Sequence[str],
-        connect: ConnectFactory = binance_connect,
-        planned_reconnect: timedelta = PLANNED_RECONNECT,
-        flush_interval_sec: float = FLUSH_INTERVAL_SEC,
-    ) -> None:
-        self._url = combined_url(ws_base_url, streams_for(symbols))
-        self._repo = repo
-        self._clock = clock
-        self._health = health
-        self._connect = connect
-        self._planned_reconnect = planned_reconnect
-        self._flush_interval_sec = flush_interval_sec
-        self._agg = OrderflowAggregator()
-        self._last_flush = clock.now()
 
-    @property
-    def aggregator(self) -> OrderflowAggregator:
-        return self._agg
+def test_a_forced_buy_is_a_short_liquidation() -> None:
+    payload = ws_force_order(SYMBOL, side="BUY", qty=0.2, price=60000.0, ts=T0)["data"]
+    liquidation = parse_liquidation(payload)
 
-    async def run(self, stop: asyncio.Event) -> None:
-        """Bağlantıyı açar. Kopunca kapsama sayacı durur; supervisor yeniden başlatır."""
-        deadline = self._clock.now() + self._planned_reconnect
-        logger.bind(collector=self.name).info("order flow akışına bağlanılıyor")
-        try:
-            async with self._connect(self._url) as messages:
-                self._agg.mark_connected(self._clock.now())
-                self._health.record_success(self.name)
-                async for raw in messages:
-                    if stop.is_set():
-                        return
-                    await self.handle_message(raw)
-                    await self._maybe_flush()
-                    if self._clock.now() >= deadline:
-                        logger.bind(collector=self.name).info("planlı yeniden bağlanma")
-                        return
-        finally:
-            self._agg.mark_disconnected(self._clock.now())
-            await self.flush()
+    assert liquidation is not None
+    assert liquidation.side == "short"
 
-    async def flush(self) -> int:
-        """Kapanmış dakikaları yazar. Yazılan satır sayısını döner."""
-        rows = self._agg.take_closed(self._clock.now())
-        if not rows:
-            return 0
-        await self._repo.upsert_orderflow(rows)
-        return len(rows)
 
-    async def _maybe_flush(self) -> None:
-        now = self._clock.now()
-        if (now - self._last_flush).total_seconds() < self._flush_interval_sec:
-            return
-        self._last_flush = now
-        await self.flush()
+def test_an_unfilled_force_order_is_ignored() -> None:
+    payload = ws_force_order(SYMBOL, side="SELL", qty=0.0, price=60000.0, ts=T0)["data"]
+    assert parse_liquidation(payload) is None
 
-    async def handle_message(self, raw: str) -> None:
-        """Tek mesajı işler. Testler bu yolu doğrudan çağırır (bozuk mesaj davranışı)."""
-        try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError:
-            logger.bind(collector=self.name).warning("bozuk mesaj atlandı")
-            return
-        data = payload.get("data", payload) if isinstance(payload, dict) else {}
-        if not isinstance(data, dict):
-            return
-        with contextlib.suppress(KeyError, ValueError, TypeError):
-            await self._dispatch(data, stream=str(payload.get("stream", "")))
-        self._health.record_success(self.name)
 
-    async def _dispatch(self, data: dict[str, Any], *, stream: str) -> None:
-        event = data.get("e")
-        if event == "aggTrade":
-            self._agg.add_trade(
-                str(data["s"]),
-                from_epoch_ms(int(data["T"])),
-                qty=float(data["q"]),
-                is_buyer_maker=bool(data["m"]),
-            )
-            return
-        if event == "forceOrder":
-            liquidation = parse_liquidation(data)
-            if liquidation is not None:
-                self._agg.add_liquidation(liquidation)
-                await self._repo.insert_liquidations([liquidation])
-            return
-        self._handle_book(data, stream=stream)
+async def test_a_closed_minute_is_written_with_trades_book_and_liquidations(
+    repo: SqliteRepository,
+) -> None:
+    clock = FakeClock(T0)
+    messages = [
+        ws_agg_trade(SYMBOL, qty=1.5, price=60000.0, is_buyer_maker=False, ts=T0),
+        ws_agg_trade(SYMBOL, qty=0.5, price=60000.0, is_buyer_maker=True, ts=T0),
+        ws_depth20(SYMBOL, bids=[(59990.0, 4.0)], asks=[(60010.0, 2.0)], ts=T0),
+        ws_force_order(SYMBOL, side="SELL", qty=0.25, price=60000.0, ts=T0),
+    ]
+    collector = build(repo, clock, messages)
 
-    def _handle_book(self, data: dict[str, Any], *, stream: str) -> None:
-        """Kısmi derinlik mesajı. Sembol bazen yalnızca stream adında gelir (spot biçimi)."""
-        bids = parse_levels(data.get("b", data.get("bids")))
-        asks = parse_levels(data.get("a", data.get("asks")))
-        if not bids or not asks:
-            return
-        symbol = str(data.get("s") or stream.split("@", maxsplit=1)[0]).upper()
-        if not symbol:
-            return
-        timestamp = data.get("T") or data.get("E")
-        ts = from_epoch_ms(int(timestamp)) if timestamp else self._clock.now()
-        self._agg.add_book(symbol, ts, bids=bids, asks=asks)
+    await collector.run(asyncio.Event())
+    clock.set(T0 + timedelta(minutes=1))
+    await collector.flush()
+
+    rows = await repo.get_orderflow(SYMBOL)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.buy_vol == pytest.approx(1.5)
+    assert row.sell_vol == pytest.approx(0.5)
+    assert row.cvd_delta == pytest.approx(1.0)
+    assert row.trade_count == 2
+    assert row.liq_long_usd == pytest.approx(15000.0)
+    assert row.top20_imbalance == pytest.approx((4.0 - 2.0) / 6.0)
+    assert row.spread_bps is not None
+    assert row.spread_bps > 0
+
+    liquidations = await repo.get_liquidations(SYMBOL)
+    assert [liq.side for liq in liquidations] == ["long"]
+
+
+async def test_liquidations_are_stored_raw_as_they_arrive(repo: SqliteRepository) -> None:
+    clock = FakeClock(T0)
+    messages = [
+        ws_force_order(SYMBOL, side="SELL", qty=0.1, price=60000.0, ts=T0),
+        ws_force_order(SYMBOL, side="BUY", qty=0.2, price=60100.0, ts=T0 + timedelta(seconds=5)),
+    ]
+    await build(repo, clock, messages).run(asyncio.Event())
+
+    rows = await repo.get_liquidations(SYMBOL)
+    assert [(row.side, round(row.usd)) for row in rows] == [("long", 6000), ("short", 12020)]
+
+
+async def test_a_broken_message_does_not_stop_the_stream(repo: SqliteRepository) -> None:
+    clock = FakeClock(T0)
+    collector = build(repo, clock, [])
+    # Hata yolunu doğrudan çağırıyoruz: bozuk mesaj akışı durdurmamalı.
+    await collector.handle_message("bu json değil")
+    await collector.handle_message(json.dumps({"stream": "x", "data": {"e": "aggTrade"}}))
+
+    assert collector.aggregator.open_minutes() == 0
+
+
+async def test_disconnecting_stops_the_coverage_clock_and_flushes(
+    repo: SqliteRepository,
+) -> None:
+    """Akış bitince açık dakikalar yazılır ve kapsama süresi kopma anında durur."""
+    clock = FakeClock(T0)
+    trade = ws_agg_trade(SYMBOL, qty=1.0, price=1.0, is_buyer_maker=False, ts=T0)
+    collector = build(repo, clock, [trade])
+
+    await collector.run(asyncio.Event())
+    clock.set(T0 + timedelta(minutes=2))
+    await collector.flush()
+
+    row = (await repo.get_orderflow(SYMBOL))[0]
+    assert row.coverage_seconds == pytest.approx(0.0, abs=0.001)  # sahte saat ilerlemedi
+    assert row.trade_count == 1
+
+
+async def test_writes_do_not_erase_columns_written_by_another_source(
+    repo: SqliteRepository,
+) -> None:
+    """REST derinlik anlık görüntüsü ve WS aynı dakikaya yazar; biri diğerini silmemeli."""
+    await repo.upsert_orderflow(
+        [OrderflowRow(symbol=SYMBOL, ts=T0, depth1pct_bid_usd=1000.0, depth1pct_imbalance=0.2)]
+    )
+    await repo.upsert_orderflow([OrderflowRow(symbol=SYMBOL, ts=T0, buy_vol=3.0, trade_count=7)])
+
+    row = (await repo.get_orderflow(SYMBOL))[0]
+    assert row.depth1pct_bid_usd == pytest.approx(1000.0)
+    assert row.depth1pct_imbalance == pytest.approx(0.2)
+    assert row.buy_vol == pytest.approx(3.0)
+    assert row.trade_count == 7

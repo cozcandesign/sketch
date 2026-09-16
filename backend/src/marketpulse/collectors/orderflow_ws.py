@@ -115,7 +115,7 @@ class OrderflowWsCollector:
                 async for raw in messages:
                     if stop.is_set():
                         return
-                    await self._handle(raw)
+                    await self.handle_message(raw)
                     await self._maybe_flush()
                     if self._clock.now() >= deadline:
                         logger.bind(collector=self.name).info("planlı yeniden bağlanma")
@@ -139,7 +139,8 @@ class OrderflowWsCollector:
         self._last_flush = now
         await self.flush()
 
-    async def _handle(self, raw: str) -> None:
+    async def handle_message(self, raw: str) -> None:
+        """Tek mesajı işler. Bozuk mesaj akışı durdurmaz; testler bu yolu doğrudan çağırır."""
         try:
             payload = json.loads(raw)
         except json.JSONDecodeError:

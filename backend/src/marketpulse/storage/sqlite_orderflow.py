@@ -7,7 +7,7 @@ Collector'lar örtüşen pencereler çektiği için bu şarttır.
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import ColumnElement, Table, select
+from sqlalchemy import ColumnElement, Table, delete, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from marketpulse.storage import tables as t
@@ -135,6 +135,20 @@ class OrderflowMixin(SqliteBase):
             t.taker_volume, symbol, t.taker_volume.c.ts, as_of=as_of, start=start
         )
         return [TakerVolumePoint(**row) for row in rows]
+
+    async def delete_orderflow_before(self, before: datetime) -> int:
+        """90 günden eski dakika özetlerini siler (K21). Silinen satır sayısını döner."""
+        return await self._delete_before(t.orderflow_1m, t.orderflow_1m.c.ts, before)
+
+    async def delete_liquidations_before(self, before: datetime) -> int:
+        return await self._delete_before(t.liquidations, t.liquidations.c.ts, before)
+
+    async def _delete_before(
+        self, table: Table, time_column: ColumnElement[datetime], before: datetime
+    ) -> int:
+        async with self._engine.begin() as conn:
+            result = await conn.execute(delete(table).where(time_column < before))
+        return int(result.rowcount or 0)
 
     async def _upsert(
         self, table: Table, values: list[dict[str, object]], keys: tuple[str, ...]
