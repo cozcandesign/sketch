@@ -376,7 +376,12 @@ engine_heartbeat   (id=1) PK        ts, version
 
 ## 7. Point-in-time FeatureStore ve look-ahead koruması
 
-`features/feature_store.py`:
+`features/feature_store.py`. Snapshot **faz faz büyür**: Faz 2'de yalnızca `candles` doldurulur
+(mumlar, kapsama, tazelik, fiyat); order flow alanları Faz 3'te, haber Faz 4'te, F&G/makro/takvim
+Faz 5'te eklenir. Var olmayan veri için boş alan taşınmaz — modül "veri yok" der ve ensemble ağırlığı
+dağıtır. Çerçevelerin indeksi `close_time`'dır: bilgi o anda kullanılabilir hale gelir.
+
+Hedef biçim (tamamlandığında):
 
 ```python
 @dataclass(frozen=True)

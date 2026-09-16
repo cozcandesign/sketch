@@ -130,7 +130,7 @@ detay ekranı mum grafiği ve modül kırılımıyla açılıyor.
 Görevler
 - [x] F2-1 `features/indicators.py` (+ `features/levels.py`): EMA, SMA, RSI, MACD, ATR, Bollinger, ADX, swing high/low, volume profile
       (POC, değer alanı); her biri referans değer testi; `hypothesis` nedensellik testi (gelecek perturbasyonu).
-- [ ] F2-2 `features/feature_store.py`: `FeatureSnapshot`, candles için kesme kuralı, geriye bakış pencereleri,
+- [x] F2-2 `features/feature_store.py`: `FeatureSnapshot`, candles için kesme kuralı, geriye bakış pencereleri,
       `coverage` hesabı + testleri; `test_truncation_invariance` tüm candles interval'larına genişletilir.
 - [ ] F2-3 `signals/base.py` (`SignalResult`, `SignalModule`, ufuk→TF eşlemesi) ve `signals/technical.py`
       (trend, momentum, volume, sr, vol_regime) + unit testleri (işaret, aralık, eksik veri, yasak kelime).

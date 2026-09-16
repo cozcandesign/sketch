@@ -8,6 +8,7 @@ from datetime import timedelta
 import pytest
 
 from marketpulse.core.types import Horizon, Interval
+from marketpulse.features.feature_store import FeatureStore
 from marketpulse.storage import SqliteRepository, make_engine
 from marketpulse.tracking import baselines
 from tests.lookahead.conftest import SERIES_START, corrupt_after, random_walk
@@ -62,3 +63,43 @@ async def test_baselines_unchanged_by_future_data(repo: SqliteRepository, horizo
 
     assert await baselines.climatology(repo, "BTCUSDT", horizon, as_of) == before_climatology
     assert await baselines.momentum(repo, "BTCUSDT", horizon, as_of) == before_momentum
+
+
+@pytest.mark.parametrize("interval", list(Interval))
+async def test_feature_snapshot_equals_the_truncated_database(
+    repo: SqliteRepository, interval: Interval
+) -> None:
+    """Snapshot, DB `as_of`'ta kesilmiş gibi olmalı — her zaman diliminde (F2-2)."""
+    candles = random_walk(300, interval)
+    as_of = SERIES_START + 187 * interval.length + interval.length / 3
+    await repo.upsert_candles(candles)
+    full = await FeatureStore(repo).snapshot("BTCUSDT", as_of, intervals=[interval])
+
+    truncated_engine = make_engine("sqlite+aiosqlite:///:memory:")
+    truncated_repo = SqliteRepository(truncated_engine)
+    await truncated_repo.create_all()
+    await truncated_repo.upsert_candles([c for c in candles if c.close_time <= as_of])
+    truncated = await FeatureStore(truncated_repo).snapshot("BTCUSDT", as_of, intervals=[interval])
+    await truncated_repo.close()
+
+    assert full.frame(interval).equals(truncated.frame(interval))
+    assert full.price == truncated.price
+    assert full.coverage == truncated.coverage
+
+
+@pytest.mark.parametrize("interval", list(Interval))
+async def test_feature_snapshot_ignores_corrupted_future_candles(
+    repo: SqliteRepository, interval: Interval
+) -> None:
+    """Gelecek perturbasyonu: `as_of` sonrası mumlar bozulsa da snapshot değişmez."""
+    candles = random_walk(300, interval)
+    as_of = SERIES_START + 200 * interval.length
+    await repo.upsert_candles(candles)
+    store = FeatureStore(repo)
+    before = await store.snapshot("BTCUSDT", as_of, intervals=[interval])
+
+    await repo.upsert_candles(corrupt_after(candles, as_of))
+    after = await store.snapshot("BTCUSDT", as_of, intervals=[interval])
+
+    assert before.frame(interval).equals(after.frame(interval))
+    assert before.price == after.price
