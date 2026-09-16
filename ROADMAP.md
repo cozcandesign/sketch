@@ -149,7 +149,7 @@ Görevler
       overlay toggle; tahmin işaretçileri sonuç rengiyle), ufuk sekmeleri, `ModuleBreakdown` +
       `RationaleList`, `ReportCard` (headline, gerekçe, karşıt argüman, beklenen aralık). Dashboard kartları
       gerçek olasılık + `ConfidenceBadge` + çelişki/veto rozetleri.
-- [ ] F2-10 Kalibrasyon ekranına modül tablosu (şimdilik tek modül) ve baseline karşılaştırma çizgileri.
+- [x] F2-10 Kalibrasyon ekranına modül tablosu (şimdilik tek modül) ve baseline karşılaştırma çizgileri.
 
 Bitti sayılır
 - Dört ufukta canlı tahminler üretiliyor; her tahminin `prediction_signals` satırı, raporu ve karşıt
@@ -157,6 +157,21 @@ Bitti sayılır
 - Teknik modül unit testleri, gösterge referans testleri ve look-ahead testleri yeşil.
 - Coin detay ekranında mum grafiği, işaretçiler ve modül kırılımı çalışıyor; sayfa yenilemeden yeni tahmin
   düşüyor.
+
+Faz 2 durum notu (geliştirme ortamında doğrulandı)
+- Doğrulandı: `make check` (350 backend + 39 arayüz testi), canlı tahmin yolunun uçtan uca çalışması
+  (snapshot → teknik modül → ensemble → rapor → defter → çözümleme), `/signals/{symbol}` ve
+  `/market/{symbol}/levels` uçları, coin detay ekranı (mum grafiği, EMA/seviye/POC katmanları, tahmin
+  işaretçileri, ufuk sekmeleri, modül kırılımı, karşıt argüman), kalibrasyon ekranındaki modül tablosu
+  ve referans karşılaştırması. Tarayıcı konsolunda hata yok.
+- **Sayılar sentetik seriden gelir, piyasa verisi değildir.** Doğrulama için üretilen veri setinde
+  teknik modül %46,2 isabet (CI 0,431–0,494), referans çizgisi %53,3 — yani ekranda "referansı
+  geçemiyor" yazıyor. Bu, rastgele yürüyüş serisinde beklenen sonuçtur ve modül hakkında **hiçbir şey
+  söylemez**; gerçek hüküm canlıda 200+ çözümlenmiş tahminden sonra verilir (K26).
+- Mum grafiği jsdom'da çizilemediği için birim testlerde kütüphane taklit edilir; grafiğin kendisi
+  gerçek tarayıcıda ekran görüntüsüyle doğrulandı.
+- Faz 2'de yalnızca teknik modül veri üretir. Ensemble kalan dört modülün ağırlığını ona dağıtır ama
+  güven çarpanı (`breadth`) bunu telafi etmez: tahminler bilerek "düşük güven" görünür.
 
 ---
 

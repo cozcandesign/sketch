@@ -33,6 +33,25 @@ describe('CalibrationPage', () => {
     expect(await screen.findByText(/Brier skoru 0.25 ise hiçbir bilgi yok/)).toBeInTheDocument()
   })
 
+  it('shows the module table with the reference line and the verdict', async () => {
+    renderPage()
+    expect(await screen.findByText('Modül bazlı isabet')).toBeInTheDocument()
+    expect(screen.getByText('teknik')).toBeInTheDocument()
+    expect(screen.getByText('referansı geçiyor')).toBeInTheDocument()
+    // Referans çizgisi (%51) yazılı olmalı: modülün aşması gereken eşik gizlenmez.
+    expect(screen.getByText('%51')).toBeInTheDocument()
+  })
+
+  it('says a module is still being measured before 200 resolved predictions', async () => {
+    renderPage({
+      ...calibration,
+      by_module: [
+        { ...calibration.by_module[0]!, n: 40, has_proof_sample: false, beats_reference: true },
+      ],
+    })
+    expect(await screen.findByText('ölçülüyor')).toBeInTheDocument()
+  })
+
   it('shows an empty state before any prediction resolves', async () => {
     renderPage({ ...calibration, overall: { ...calibration.overall, n: 0 }, daily: [] })
     expect(await screen.findByText(/Henüz sonuçlanmış tahmin yok/)).toBeInTheDocument()

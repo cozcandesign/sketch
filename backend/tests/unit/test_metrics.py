@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from marketpulse.core.types import Horizon
-from marketpulse.storage.models import ResolvedRow
+from marketpulse.storage.models import ModuleResolvedRow, ResolvedRow
 from marketpulse.tracking import metrics
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
@@ -134,3 +134,84 @@ def test_filter_subset() -> None:
     assert len(metrics.filter_subset(rows, "all")) == 2
     assert len(metrics.filter_subset(rows, "non_overlapping")) == 1
     assert len(metrics.filter_subset(rows, "high_confidence")) == 1
+
+
+# --- modül isabeti (K26) ---
+
+
+def module_row(
+    module: str, score: float, y: int, *, coverage: float = 1.0, non_overlapping: bool = True
+) -> ModuleResolvedRow:
+    return ModuleResolvedRow(
+        module=module,
+        score=score,
+        coverage=coverage,
+        horizon=Horizon.H1H,
+        as_of=datetime(2026, 1, 1, tzinfo=UTC),
+        non_overlapping=non_overlapping,
+        y=y,
+    )
+
+
+def test_module_hit_rate_uses_the_sign_of_the_score() -> None:
+    rows = [
+        module_row("technical", 0.5, 1),  # yukarı dedi, yukarı oldu
+        module_row("technical", 0.4, 0),  # yukarı dedi, aşağı oldu
+        module_row("technical", -0.6, 0),  # aşağı dedi, aşağı oldu
+        module_row("technical", -0.3, 0),  # aşağı dedi, aşağı oldu
+    ]
+    summary = metrics.module_summary(rows, "technical")
+    assert summary.n == 4
+    assert summary.hit_rate == pytest.approx(0.75)
+    assert summary.hit_ci is not None
+    assert summary.hit_ci.low < 0.75 < summary.hit_ci.high
+
+
+def test_weak_scores_do_not_count_as_a_direction_call() -> None:
+    """|skor| < 0.1 "yön söylemiyor": isabet ölçümüne girmez, atlandı olarak sayılır."""
+    rows = [module_row("technical", 0.02, 0), module_row("technical", 0.5, 1)]
+    summary = metrics.module_summary(rows, "technical")
+    assert summary.n == 1
+    assert summary.skipped == 1
+    assert summary.hit_rate == pytest.approx(1.0)
+
+
+def test_rows_without_coverage_are_not_measured() -> None:
+    rows = [module_row("orderflow", 0.0, 1, coverage=0.0)]
+    summary = metrics.module_summary(rows, "orderflow")
+    assert summary.n == 0
+    assert summary.hit_rate is None
+    assert summary.beats(0.5) is None
+
+
+def test_a_module_beats_the_reference_only_when_its_lower_bound_is_above_it() -> None:
+    """K26: üstünlük noktasal isabetle değil, güven aralığının ALT sınırıyla kanıtlanır."""
+    strong = [module_row("technical", 0.5, 1) for _ in range(200)]
+    summary = metrics.module_summary(strong, "technical")
+    assert summary.beats(0.52) is True
+
+    coin_flip = [module_row("technical", 0.5, index % 2) for index in range(200)]
+    weak = metrics.module_summary(coin_flip, "technical")
+    assert weak.hit_rate == pytest.approx(0.5)
+    assert weak.beats(0.52) is False
+
+
+def test_the_proof_sample_threshold_is_two_hundred() -> None:
+    few = metrics.module_summary([module_row("technical", 0.5, 1) for _ in range(199)], "technical")
+    enough = metrics.module_summary(
+        [module_row("technical", 0.5, 1) for _ in range(200)], "technical"
+    )
+    assert not few.has_proof_sample
+    assert enough.has_proof_sample
+
+
+def test_the_reference_line_is_the_best_of_the_baselines() -> None:
+    better = metrics.MetricsSummary(10, 0.2, 0.1, 0.5, 0.62, None)
+    worse = metrics.MetricsSummary(10, 0.3, 0.0, 0.5, 0.48, None)
+    assert metrics.best_reference_hit_rate([better, worse]) == pytest.approx(0.62)
+    assert metrics.best_reference_hit_rate([]) is None
+
+
+def test_module_summaries_cover_every_module_present() -> None:
+    rows = [module_row("technical", 0.5, 1), module_row("macro", -0.4, 0)]
+    assert [s.module for s in metrics.module_summaries(rows)] == ["macro", "technical"]

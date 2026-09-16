@@ -669,6 +669,24 @@
             "type": "array",
             "title": "By Horizon"
           },
+          "by_module": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleSummaryOut"
+            },
+            "type": "array",
+            "title": "By Module"
+          },
+          "reference_hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Hit Rate"
+          },
           "bins": {
             "items": {
               "$ref": "#/components/schemas/CalibrationBinOut"
@@ -695,6 +713,8 @@
           "overall",
           "by_model",
           "by_horizon",
+          "by_module",
+          "reference_hit_rate",
           "bins",
           "daily",
           "pending"
@@ -1581,6 +1601,88 @@
           "label_tr"
         ],
         "title": "ModelSummaryOut"
+      },
+      "ModuleSummaryOut": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "label_tr": {
+            "type": "string",
+            "title": "Label Tr"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate"
+          },
+          "hit_ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci Low"
+          },
+          "hit_ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Ci High"
+          },
+          "beats_reference": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beats Reference"
+          },
+          "has_proof_sample": {
+            "type": "boolean",
+            "title": "Has Proof Sample"
+          }
+        },
+        "type": "object",
+        "required": [
+          "module",
+          "label_tr",
+          "n",
+          "skipped",
+          "hit_rate",
+          "hit_ci_low",
+          "hit_ci_high",
+          "beats_reference",
+          "has_proof_sample"
+        ],
+        "title": "ModuleSummaryOut",
+        "description": "Modül yön isabeti ve referansla karşılaştırma (K26)."
       },
       "OutboxHealthOut": {
         "properties": {

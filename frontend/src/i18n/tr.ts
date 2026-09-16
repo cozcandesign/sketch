@@ -127,6 +127,20 @@ export const tr = {
     windows: { '7d': '7 gün', '30d': '30 gün', '90d': '90 gün', all: 'tümü' },
     tooFewSamples: 'örnek sayısı az, sonuçlar güvenilir değil',
     ciLabel: 'güven aralığı',
+    byModule: 'Modül bazlı isabet',
+    moduleColumn: 'modül',
+    skipped: 'atlanan',
+    referenceLine: 'referans çizgisi',
+    referenceHint:
+      'Bir modül, isabet oranının alt sınırı referans tahmincilerin en iyisini geçtiğinde işe yarıyor sayılır (en az 200 çözümlenmiş tahminden sonra).',
+    verdict: 'durum',
+    verdicts: {
+      proving: 'ölçülüyor',
+      beats: 'referansı geçiyor',
+      fails: 'referansı geçemiyor',
+      unknown: 'veri yetersiz',
+    },
+    moduleEmpty: 'Henüz modül skoru içeren çözümlenmiş tahmin yok.',
   },
   coin: {
     chart: 'Fiyat grafiği',

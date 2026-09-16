@@ -6,12 +6,23 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Table, Td, Th, Tr } from '@/components/ui/Table'
 import { CalibrationCurve } from '@/components/charts/CalibrationCurve'
 import { BrierSeries } from '@/components/charts/BrierSeries'
+import { ModuleTable } from '@/features/calibration/ModuleTable'
 import { useCalibration, type CalibrationWindow } from '@/api/queries/calibration'
 import { formatCount, formatProbability, formatScore } from '@/lib/format'
 import type { HorizonSummary, ModelSummary } from '@/api/types'
 import { tr } from '@/i18n/tr'
 
 const WINDOWS: CalibrationWindow[] = ['7d', '30d', '90d', 'all']
+const BASELINE_PREFIX = 'baseline-'
+
+/** Referans tahmincilerin en iyi (en düşük) Brier skoru: grafikteki karşılaştırma çizgisi. */
+function baselineBrier(models: ModelSummary[]): number | null {
+  const scores = models
+    .filter((model) => model.model_version.startsWith(BASELINE_PREFIX))
+    .map((model) => model.brier)
+    .filter((score): score is number => score != null)
+  return scores.length > 0 ? Math.min(...scores) : null
+}
 
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -117,9 +128,12 @@ export function CalibrationPage() {
                 <CalibrationCurve bins={data.bins} />
               </Card>
               <Card title={tr.calibration.series}>
-                <BrierSeries daily={data.daily} />
+                <BrierSeries daily={data.daily} baselineBrier={baselineBrier(data.by_model)} />
               </Card>
             </div>
+            <Card title={tr.calibration.byModule}>
+              <ModuleTable modules={data.by_module} reference={data.reference_hit_rate} />
+            </Card>
             <div className="grid gap-3 xl:grid-cols-2">
               <Card title={tr.calibration.byModel}>
                 <SummaryRows rows={data.by_model} firstColumn={tr.predictions.columns.model} />

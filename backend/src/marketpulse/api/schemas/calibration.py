@@ -48,6 +48,22 @@ class DailyPointOut(BaseModel):
     hit_rate: float
 
 
+class ModuleSummaryOut(BaseModel):
+    """Modül yön isabeti ve referansla karşılaştırma (K26)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    module: str
+    label_tr: str
+    n: int
+    skipped: int
+    hit_rate: float | None
+    hit_ci_low: float | None
+    hit_ci_high: float | None
+    beats_reference: bool | None
+    has_proof_sample: bool
+
+
 class CalibrationOut(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -56,6 +72,8 @@ class CalibrationOut(BaseModel):
     overall: SummaryOut
     by_model: list[ModelSummaryOut]
     by_horizon: list[HorizonSummaryOut]
+    by_module: list[ModuleSummaryOut]
+    reference_hit_rate: float | None
     bins: list[CalibrationBinOut]
     daily: list[DailyPointOut]
     pending: int

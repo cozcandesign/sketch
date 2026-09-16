@@ -214,6 +214,20 @@ export const calibration: Calibration = {
     mean_p: index === 6 ? 0.65 : null,
     observed_freq: index === 6 ? 0.7 : null,
   })),
+  by_module: [
+    {
+      module: 'technical',
+      label_tr: 'teknik',
+      n: 240,
+      skipped: 12,
+      hit_rate: 0.58,
+      hit_ci_low: 0.52,
+      hit_ci_high: 0.64,
+      beats_reference: true,
+      has_proof_sample: true,
+    },
+  ],
+  reference_hit_rate: 0.51,
   daily: [
     { day: '2026-01-01', n: 6, brier: 0.2, hit_rate: 0.66 },
     { day: '2026-01-02', n: 6, brier: 0.16, hit_rate: 0.83 },

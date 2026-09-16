@@ -12,8 +12,9 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
+from typing import Final
 
-from marketpulse.storage.models import ResolvedRow
+from marketpulse.storage.models import ModuleResolvedRow, ResolvedRow
 
 Z_95 = 1.959963984540054
 DEFAULT_BINS = 10
@@ -159,3 +160,59 @@ def filter_subset(rows: Sequence[ResolvedRow], subset: str) -> list[ResolvedRow]
     if subset == "high_confidence":
         return [r for r in rows if r.confidence_label == "high"]
     return list(rows)
+
+
+# --- modül isabeti (ARCHITECTURE.md §11.2, K26) ---
+
+MODULE_MIN_SCORE: Final = 0.1  # bu şiddetin altındaki skor "yön söylemiyor": sayılmaz
+PROOF_SAMPLE: Final = 200  # K26: ispat için gereken asgari çözümlenmiş tahmin
+
+
+@dataclass(frozen=True)
+class ModuleSummary:
+    """Tek modülün yön isabeti. `skipped`: skoru çok zayıf olduğu için sayılmayan tahminler."""
+
+    module: str
+    n: int
+    skipped: int
+    hit_rate: float | None
+    hit_ci: Interval95 | None
+
+    def beats(self, reference: float | None) -> bool | None:
+        """Wilson alt sınırı referans isabetini geçiyor mu? Veri yoksa `None` ("bilinmiyor")."""
+        if self.hit_ci is None or reference is None:
+            return None
+        return self.hit_ci.low > reference
+
+    @property
+    def has_proof_sample(self) -> bool:
+        """K26: en az 200 çözümlenmiş tahmin birikmeden hüküm verilmez."""
+        return self.n >= PROOF_SAMPLE
+
+
+def module_summary(
+    rows: Sequence[ModuleResolvedRow], module: str, *, min_score: float = MODULE_MIN_SCORE
+) -> ModuleSummary:
+    """Modül skorunun işareti yönü verir; zayıf skorlar ölçüme girmez."""
+    own = [row for row in rows if row.module == module and row.coverage > 0]
+    voting = [row for row in own if abs(row.score) >= min_score]
+    if not voting:
+        return ModuleSummary(module=module, n=0, skipped=len(own), hit_rate=None, hit_ci=None)
+    hits = sum(1 for row in voting if (row.score > 0) == (row.y == 1))
+    return ModuleSummary(
+        module=module,
+        n=len(voting),
+        skipped=len(own) - len(voting),
+        hit_rate=hits / len(voting),
+        hit_ci=wilson_interval(hits, len(voting)),
+    )
+
+
+def module_summaries(rows: Sequence[ModuleResolvedRow]) -> list[ModuleSummary]:
+    return [module_summary(rows, module) for module in sorted({row.module for row in rows})]
+
+
+def best_reference_hit_rate(summaries: Sequence[MetricsSummary]) -> float | None:
+    """Referans tahmincilerin en iyisinin isabet oranı: modülün aşması gereken çizgi (K26)."""
+    rates = [summary.hit_rate for summary in summaries if summary.hit_rate is not None]
+    return max(rates) if rates else None

@@ -13,6 +13,7 @@ from marketpulse.storage.models import (
     CandleGap,
     CollectorHealth,
     Heartbeat,
+    ModuleResolvedRow,
     NewPrediction,
     OutboxEvent,
     Prediction,
@@ -96,6 +97,14 @@ class Repository(Protocol):
         source: str | None = None,
         since: datetime | None = None,
     ) -> list[ResolvedRow]: ...
+
+    async def resolved_module_rows(
+        self,
+        *,
+        symbol: str | None = None,
+        horizon: Horizon | None = None,
+        since: datetime | None = None,
+    ) -> list[ModuleResolvedRow]: ...
 
     # --- ağırlıklar ---
     async def get_weights(self, horizon: Horizon) -> dict[str, float]: ...

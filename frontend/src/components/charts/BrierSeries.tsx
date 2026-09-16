@@ -14,17 +14,23 @@ import { tr } from '@/i18n/tr'
 const UNINFORMED = 0.25
 
 /**
- * Günlük Brier skoru. 0.25 çizgisi "hiç bilgi yok" seviyesidir; çizginin altı iyidir.
- * Tek seri olduğu için lejant yok; başlık seriyi adlandırır.
+ * Günlük Brier skoru. İki referans çizgi: 0.25 "hiç bilgi yok" ve referans tahmincilerin en iyisi.
+ * Modüllerin yenmesi gereken çizgi ikincisidir; grafikte görünmezse karşılaştırma yapılamaz.
  */
-export function BrierSeries({ daily }: { daily: Calibration['daily'] }) {
+export function BrierSeries({
+  daily,
+  baselineBrier = null,
+}: {
+  daily: Calibration['daily']
+  baselineBrier?: number | null
+}) {
   const data = daily.map((point) => ({
     day: point.day,
     brier: Number(point.brier.toFixed(4)),
     n: point.n,
   }))
   // Bilgisiz çizgi (0.25) her zaman görünür kalsın, üstte biraz pay bırak
-  const maxValue = Math.max(UNINFORMED, ...data.map((d) => d.brier))
+  const maxValue = Math.max(UNINFORMED, baselineBrier ?? 0, ...data.map((d) => d.brier))
   const upperBound = Math.ceil((maxValue + 0.05) * 20) / 20
 
   return (
@@ -55,6 +61,22 @@ export function BrierSeries({ daily }: { daily: Calibration['daily'] }) {
             dy: -6,
           }}
         />
+        {baselineBrier == null ? null : (
+          <ReferenceLine
+            y={Number(baselineBrier.toFixed(4))}
+            stroke="var(--color-series-2)"
+            strokeDasharray="6 3"
+            label={{
+              // Sağa yaslanır: 0.25 çizgisi ile referans çizgisi yakın olduğunda etiketler
+              // üst üste binmesin (iki çizgi de okunabilir kalsın).
+              value: tr.calibration.referenceLine,
+              position: 'insideBottomRight',
+              fill: 'var(--color-series-2)',
+              fontSize: 10,
+              dy: 10,
+            }}
+          />
+        )}
         <Tooltip
           cursor={{ stroke: 'var(--color-border)' }}
           contentStyle={{

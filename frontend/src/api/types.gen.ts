@@ -206,6 +206,10 @@ export interface components {
       by_model: components['schemas']['ModelSummaryOut'][]
       /** By Horizon */
       by_horizon: components['schemas']['HorizonSummaryOut'][]
+      /** By Module */
+      by_module: components['schemas']['ModuleSummaryOut'][]
+      /** Reference Hit Rate */
+      reference_hit_rate: number | null
       /** Bins */
       bins: components['schemas']['CalibrationBinOut'][]
       /** Daily */
@@ -472,6 +476,30 @@ export interface components {
       model_version: string
       /** Label Tr */
       label_tr: string
+    }
+    /**
+     * ModuleSummaryOut
+     * @description Modül yön isabeti ve referansla karşılaştırma (K26).
+     */
+    ModuleSummaryOut: {
+      /** Module */
+      module: string
+      /** Label Tr */
+      label_tr: string
+      /** N */
+      n: number
+      /** Skipped */
+      skipped: number
+      /** Hit Rate */
+      hit_rate: number | null
+      /** Hit Ci Low */
+      hit_ci_low: number | null
+      /** Hit Ci High */
+      hit_ci_high: number | null
+      /** Beats Reference */
+      beats_reference: boolean | null
+      /** Has Proof Sample */
+      has_proof_sample: boolean
     }
     /** OutboxHealthOut */
     OutboxHealthOut: {

@@ -10,6 +10,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from marketpulse.core.types import Horizon
 from marketpulse.storage import tables as t
 from marketpulse.storage.models import (
+    ModuleResolvedRow,
     NewPrediction,
     Prediction,
     PredictionOutcome,
@@ -286,4 +287,57 @@ class LedgerMixin(SqliteBase):
                 confidence_label=r.confidence_label,
             )
             for r in rows
+        ]
+
+    async def resolved_module_rows(
+        self,
+        *,
+        symbol: str | None = None,
+        horizon: Horizon | None = None,
+        since: datetime | None = None,
+    ) -> list[ModuleResolvedRow]:
+        """Modül isabeti için: her çözümlenmiş canlı tahminin modül skorları.
+
+        Yalnızca `source='live'` sayılır; referans tahminlerin modülü yoktur.
+        """
+        join = t.predictions.join(
+            t.prediction_outcomes, t.predictions.c.id == t.prediction_outcomes.c.prediction_id
+        ).join(t.prediction_signals, t.predictions.c.id == t.prediction_signals.c.prediction_id)
+        conditions: list[ColumnElement[bool]] = [
+            t.prediction_outcomes.c.outcome.in_(("up", "down")),
+            t.predictions.c.source == "live",
+        ]
+        if symbol is not None:
+            conditions.append(t.predictions.c.symbol == symbol)
+        if horizon is not None:
+            conditions.append(t.predictions.c.horizon == horizon.value)
+        if since is not None:
+            conditions.append(t.predictions.c.as_of >= since)
+        stmt = (
+            select(
+                t.prediction_signals.c.module,
+                t.prediction_signals.c.score,
+                t.prediction_signals.c.coverage,
+                t.predictions.c.horizon,
+                t.predictions.c.as_of,
+                t.predictions.c.non_overlapping,
+                t.prediction_outcomes.c.outcome,
+            )
+            .select_from(join)
+            .where(*conditions)
+            .order_by(t.predictions.c.as_of)
+        )
+        async with self._engine.connect() as conn:
+            rows = (await conn.execute(stmt)).mappings().all()
+        return [
+            ModuleResolvedRow(
+                module=row["module"],
+                score=row["score"],
+                coverage=row["coverage"],
+                horizon=Horizon(row["horizon"]),
+                as_of=row["as_of"],
+                non_overlapping=bool(row["non_overlapping"]),
+                y=1 if row["outcome"] == "up" else 0,
+            )
+            for row in rows
         ]

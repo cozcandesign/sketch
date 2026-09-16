@@ -167,6 +167,20 @@ class Prediction(BaseModel):
     signals: list[SignalRow] | None = None
 
 
+class ModuleResolvedRow(BaseModel):
+    """Bir modülün tek bir çözümlenmiş tahmindeki skoru ve gerçekleşen yön."""
+
+    model_config = ConfigDict(frozen=True)
+
+    module: str
+    score: float
+    coverage: float
+    horizon: Horizon
+    as_of: datetime
+    non_overlapping: bool
+    y: int  # 1 = yukarı, 0 = aşağı
+
+
 class ResolvedRow(BaseModel):
     """Metrik hesabı için sadeleştirilmiş çözümlenmiş tahmin."""
 
