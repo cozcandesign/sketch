@@ -132,7 +132,7 @@ Görevler
       (POC, değer alanı); her biri referans değer testi; `hypothesis` nedensellik testi (gelecek perturbasyonu).
 - [x] F2-2 `features/feature_store.py`: `FeatureSnapshot`, candles için kesme kuralı, geriye bakış pencereleri,
       `coverage` hesabı + testleri; `test_truncation_invariance` tüm candles interval'larına genişletilir.
-- [ ] F2-3 `signals/base.py` (`SignalResult`, `SignalModule`, ufuk→TF eşlemesi) ve `signals/technical.py`
+- [x] F2-3 `signals/base.py` (`SignalResult`, `SignalModule`, ufuk→TF eşlemesi) ve `signals/technical.py`
       (trend, momentum, volume, sr, vol_regime) + unit testleri (işaret, aralık, eksik veri, yasak kelime).
 - [ ] F2-4 `ensemble/`: `combine.py` (ağırlıklı log-odds, `k_h`, K19 kırpma), `confidence.py`,
       `conflict.py`, `expected_range.py`; `weights.default.yaml` yükleyici; `weights` tablosu tohumu + testleri.

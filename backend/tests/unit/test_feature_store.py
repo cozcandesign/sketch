@@ -6,12 +6,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from marketpulse.core.types import Interval
-from marketpulse.features.feature_store import (
-    DEFAULT_LOOKBACK,
-    FeatureStore,
-    candles_to_frame,
-    empty_frame,
-)
+from marketpulse.features.feature_store import DEFAULT_LOOKBACK, FeatureStore, candles_to_frame
+from marketpulse.features.snapshot import empty_frame
 from marketpulse.storage import Candle, SqliteRepository, make_engine
 
 START = datetime(2026, 1, 1, tzinfo=UTC)
