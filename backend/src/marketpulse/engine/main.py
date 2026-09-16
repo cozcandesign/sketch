@@ -1,7 +1,7 @@
 """Engine süreci: `python -m marketpulse.engine` (ARCHITECTURE.md §2, §5, §17).
 
-Faz 1'de çalışanlar: mum toplayıcıları (REST geçmiş + boşluk, WS canlı), referans tahminciler,
-sonuç çözümleyici, saklama ve heartbeat. Gerçek sinyal modülleri Faz 2'den itibaren eklenir.
+Çalışanlar: mum toplayıcıları (REST geçmiş + boşluk, WS canlı), canlı tahmin (sinyal modülleri →
+ensemble → rapor), referans tahminciler, sonuç çözümleyici, saklama ve heartbeat.
 """
 
 import asyncio
@@ -26,10 +26,12 @@ from marketpulse.core.types import Horizon, Interval
 from marketpulse.core.version import git_sha
 from marketpulse.engine.health import HealthRegistry
 from marketpulse.engine.jobs import Job, run_jobs
-from marketpulse.engine.predict import run_baseline_predictions
+from marketpulse.engine.predict import LivePredictor, run_baseline_predictions
 from marketpulse.engine.ratelimit import RateLimiter
 from marketpulse.engine.retention import run_retention
 from marketpulse.engine.supervisor import supervise
+from marketpulse.ensemble.weights import load_default_weights
+from marketpulse.features.feature_store import FeatureStore
 from marketpulse.storage import Outbox, Repository, SqliteRepository, make_engine
 from marketpulse.storage.migrate import run_migrations, wait_for_schema
 from marketpulse.tracking.ledger import Ledger
@@ -67,6 +69,7 @@ def build_jobs(
     *,
     repo: Repository,
     ledger: Ledger,
+    predictor: LivePredictor,
     resolver: Resolver,
     klines: KlinesCollector,
     health: HealthRegistry,
@@ -84,11 +87,15 @@ def build_jobs(
     def predict_job(horizon: Horizon) -> Callable[[datetime], Awaitable[None]]:
         async def run(scheduled: datetime) -> None:
             as_of = floor_to_minute(scheduled)
-            written = await run_baseline_predictions(
+            live = await predictor.run(symbols=symbols, horizon=horizon, as_of=as_of)
+            baseline = await run_baseline_predictions(
                 repo, ledger, symbols=symbols, horizon=horizon, as_of=as_of
             )
             logger.bind(job=f"predict_{horizon.value}", horizon=horizon.value).info(
-                "{n} referans tahmin yazıldı (as_of {at})", n=written, at=as_of.isoformat()
+                "{live} canlı + {base} referans tahmin yazıldı (as_of {at})",
+                live=live,
+                base=baseline,
+                at=as_of.isoformat(),
             )
 
         return run
@@ -178,9 +185,15 @@ async def run(
         health.register(klines_ws.name)
         ledger = Ledger(repo, clock, outbox)
         resolver = Resolver(repo, clock, outbox, backfill=klines)
+        # Ağırlıklar yalnızca tablo boşken tohumlanır; K3 gereği üzerine yazılmaz.
+        seeded = await repo.seed_weights(load_default_weights(), valid_from=clock.now())
+        if seeded:
+            log.info("varsayılan ağırlıklar tohumlandı ({n} satır)", n=seeded)
+        predictor = LivePredictor(repo, ledger, FeatureStore(repo))
         jobs = build_jobs(
             repo=repo,
             ledger=ledger,
+            predictor=predictor,
             resolver=resolver,
             klines=klines,
             health=health,

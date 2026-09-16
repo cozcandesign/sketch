@@ -274,9 +274,7 @@ def test_a_single_module_does_not_produce_high_confidence() -> None:
     results = [signal("technical", 0.6)]
     weights = load_default_weights()[Horizon.H1H]
     result = combine(results, weights, horizon=Horizon.H1H)
-    reading = confidence.evaluate(
-        results, result.effective_weights, breadth=result.weight_mass
-    )
+    reading = confidence.evaluate(results, result.effective_weights, breadth=result.weight_mass)
     assert reading.label == "low"
     assert reading.parts["breadth"] == pytest.approx(weights["technical"])
 
@@ -285,7 +283,5 @@ def test_full_evidence_base_allows_high_confidence() -> None:
     results = [signal(module, 0.5) for module in MODULES]
     weights = load_default_weights()[Horizon.H1H]
     result = combine(results, weights, horizon=Horizon.H1H)
-    reading = confidence.evaluate(
-        results, result.effective_weights, breadth=result.weight_mass
-    )
+    reading = confidence.evaluate(results, result.effective_weights, breadth=result.weight_mass)
     assert reading.label in {"mid", "high"}

@@ -139,7 +139,7 @@ Görevler
       Bu fazda yalnızca technical modülü aktif; diğerleri `coverage=0`.
 - [x] F2-5 `reporting/`: `templates.py` (teknik modül şablonları), `counter_argument.py`, `build_report()`
       + testleri; yasak kelime testi şablonları tarar.
-- [ ] F2-6 `predict_*` işleri gerçek akışa geçer (snapshot → modüller → ensemble → rapor → ledger);
+- [x] F2-6 `predict_*` işleri gerçek akışa geçer (snapshot → modüller → ensemble → rapor → ledger);
       modül istisnasında "veri yok" davranışı testi.
 - [ ] F2-7 `tests/lookahead/test_future_perturbation` (technical için) ve `test_backtest_equivalence`
       iskeleti (motor Faz 7'de; şimdilik aynı fonksiyonun iki çağrısı).
