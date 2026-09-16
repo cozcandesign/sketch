@@ -189,7 +189,7 @@ async def run(
         seeded = await repo.seed_weights(load_default_weights(), valid_from=clock.now())
         if seeded:
             log.info("varsayılan ağırlıklar tohumlandı ({n} satır)", n=seeded)
-        predictor = LivePredictor(repo, ledger, FeatureStore(repo))
+        predictor = LivePredictor(repo, ledger, FeatureStore(repo), outbox=outbox)
         jobs = build_jobs(
             repo=repo,
             ledger=ledger,

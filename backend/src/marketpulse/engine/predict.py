@@ -26,6 +26,7 @@ from marketpulse.reporting.build import build_report
 from marketpulse.signals.base import SignalModule, SignalResult, no_data
 from marketpulse.signals.technical import TechnicalModule
 from marketpulse.storage.models import NewPrediction, SignalRow
+from marketpulse.storage.outbox import Outbox
 from marketpulse.storage.repository import Repository
 from marketpulse.tracking import baselines
 from marketpulse.tracking.ledger import Ledger, is_non_overlapping
@@ -49,12 +50,14 @@ class LivePredictor:
         ledger: Ledger,
         store: FeatureStore,
         modules: Sequence[SignalModule] | None = None,
+        outbox: Outbox | None = None,
     ) -> None:
         self._repo = repo
         self._ledger = ledger
         self._store = store
         self._modules = tuple(modules) if modules is not None else default_modules()
         self._defaults = load_default_weights()
+        self._outbox = outbox
 
     async def run(self, *, symbols: Sequence[str], horizon: Horizon, as_of: datetime) -> int:
         """Her sembol için bir canlı tahmin yazar. Yazılan tahmin sayısını döner."""
@@ -126,6 +129,28 @@ class LivePredictor:
             ),
             [_signal_row(result) for result in results],
         )
+        if self._outbox is not None:
+            # Arayüz modül kırılımını sayfa yenilemeden tazeleyebilsin (ARCHITECTURE.md §2).
+            await self._outbox.emit(
+                "signals.updated",
+                {
+                    "symbol": snapshot.symbol,
+                    "horizon": horizon.value,
+                    "as_of": snapshot.as_of,
+                    "p_up": ensemble.p_up,
+                    "confidence_label": confidence.label,
+                    "conflict": ensemble.conflict.active,
+                    "modules": [
+                        {
+                            "module": result.module,
+                            "score": result.score,
+                            "confidence": result.confidence,
+                            "coverage": result.coverage,
+                        }
+                        for result in results
+                    ],
+                },
+            )
 
     def _run_module(
         self, module: SignalModule, snapshot: FeatureSnapshot, horizon: Horizon

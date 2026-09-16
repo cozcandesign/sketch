@@ -341,6 +341,101 @@
         }
       }
     },
+    "/api/v1/signals/{symbol}": {
+      "get": {
+        "tags": [
+          "signals"
+        ],
+        "summary": "Get Signals",
+        "description": "Her ufuk için en son canlı tahmin ve onu üreten modül skorları.",
+        "operationId": "get_signals_api_v1_signals__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market/{symbol}/levels": {
+      "get": {
+        "tags": [
+          "signals"
+        ],
+        "summary": "Get Levels",
+        "description": "Onaylanmış swing'lerden kümelenmiş destek/direnç ve hacim profili.",
+        "operationId": "get_levels_api_v1_market__symbol__levels_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Interval",
+              "default": "15m"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LevelsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/calibration": {
       "get": {
         "tags": [
@@ -954,6 +1049,134 @@
         "title": "Horizon",
         "description": "Tahmin ufku. Değerler API ve DB'de olduğu gibi kullanılır."
       },
+      "HorizonSignalsOut": {
+        "properties": {
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "label_tr": {
+            "type": "string",
+            "title": "Label Tr"
+          },
+          "prediction_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prediction Id"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "p_up": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Up"
+          },
+          "combined_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Combined Score"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "confidence_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "mid",
+                  "high"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Label"
+          },
+          "conflict": {
+            "type": "boolean",
+            "title": "Conflict"
+          },
+          "veto_active": {
+            "type": "boolean",
+            "title": "Veto Active"
+          },
+          "modules": {
+            "items": {
+              "$ref": "#/components/schemas/SignalOut"
+            },
+            "type": "array",
+            "title": "Modules"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report"
+          }
+        },
+        "type": "object",
+        "required": [
+          "horizon",
+          "label_tr",
+          "prediction_id",
+          "as_of",
+          "p_up",
+          "combined_score",
+          "confidence",
+          "confidence_label",
+          "conflict",
+          "veto_active",
+          "modules",
+          "report"
+        ],
+        "title": "HorizonSignalsOut",
+        "description": "Bir ufkun en son canlı tahmini ve o tahmini üreten modül skorları."
+      },
       "HorizonStateOut": {
         "properties": {
           "horizon": {
@@ -1092,6 +1315,103 @@
         ],
         "title": "Interval",
         "description": "Mum zaman dilimi. Değerler Binance API'siyle ve DB ile aynı."
+      },
+      "LevelOut": {
+        "properties": {
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "touches": {
+            "type": "integer",
+            "title": "Touches"
+          },
+          "distance_atr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Atr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "kind",
+          "touches",
+          "distance_atr"
+        ],
+        "title": "LevelOut",
+        "description": "Mekanik destek/direnç seviyesi."
+      },
+      "LevelsOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "interval": {
+            "type": "string",
+            "title": "Interval"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "atr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atr"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/LevelOut"
+            },
+            "type": "array",
+            "title": "Levels"
+          },
+          "volume_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VolumeProfileOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "interval",
+          "price",
+          "atr",
+          "levels",
+          "volume_profile"
+        ],
+        "title": "LevelsOut"
       },
       "LiveHealthOut": {
         "properties": {
@@ -1677,6 +1997,27 @@
         ],
         "title": "SignalOut"
       },
+      "SignalsOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/HorizonSignalsOut"
+            },
+            "type": "array",
+            "title": "Horizons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "horizons"
+        ],
+        "title": "SignalsOut"
+      },
       "SummaryOut": {
         "properties": {
           "n": {
@@ -1827,6 +2168,29 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VolumeProfileOut": {
+        "properties": {
+          "poc": {
+            "type": "number",
+            "title": "Poc"
+          },
+          "value_area_low": {
+            "type": "number",
+            "title": "Value Area Low"
+          },
+          "value_area_high": {
+            "type": "number",
+            "title": "Value Area High"
+          }
+        },
+        "type": "object",
+        "required": [
+          "poc",
+          "value_area_low",
+          "value_area_high"
+        ],
+        "title": "VolumeProfileOut"
       },
       "WsHealthOut": {
         "properties": {

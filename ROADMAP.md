@@ -143,7 +143,7 @@ Görevler
       modül istisnasında "veri yok" davranışı testi.
 - [x] F2-7 `tests/lookahead/test_future_perturbation` (technical için) ve `test_backtest_equivalence`
       iskeleti (motor Faz 7'de; şimdilik aynı fonksiyonun iki çağrısı).
-- [ ] F2-8 API: `GET /signals/{symbol}`, `/market/{symbol}/levels`; `/market/{symbol}` canlı tahmin özetleri;
+- [x] F2-8 API: `GET /signals/{symbol}`, `/market/{symbol}/levels`; `/market/{symbol}` canlı tahmin özetleri;
       outbox `signals.updated`.
 - [ ] F2-9 Frontend: Coin detay ekranı — `CandleChart` (lightweight-charts; interval seçici; EMA/S-R/POC
       overlay toggle; tahmin işaretçileri sonuç rengiyle), ufuk sekmeleri, `ModuleBreakdown` +

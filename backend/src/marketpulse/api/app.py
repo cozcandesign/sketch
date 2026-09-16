@@ -19,6 +19,7 @@ from marketpulse.api.routers.calibration import router as calibration_router
 from marketpulse.api.routers.health import router as health_router
 from marketpulse.api.routers.market import router as market_router
 from marketpulse.api.routers.predictions import router as predictions_router
+from marketpulse.api.routers.signals import router as signals_router
 from marketpulse.api.ws import WsHub, ws_endpoint
 from marketpulse.collectors.ws_stream import ConnectFactory, binance_connect
 from marketpulse.config import Settings, load_settings
@@ -116,6 +117,7 @@ def create_app(
     app.include_router(health_router, prefix=API_PREFIX)
     app.include_router(market_router, prefix=API_PREFIX)
     app.include_router(predictions_router, prefix=API_PREFIX)
+    app.include_router(signals_router, prefix=API_PREFIX)
     app.include_router(calibration_router, prefix=API_PREFIX)
     app.add_api_websocket_route("/ws", ws_endpoint)
     return app

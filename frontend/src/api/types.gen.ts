@@ -106,6 +106,46 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/signals/{symbol}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Get Signals
+     * @description Her ufuk için en son canlı tahmin ve onu üreten modül skorları.
+     */
+    get: operations['get_signals_api_v1_signals__symbol__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/market/{symbol}/levels': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Get Levels
+     * @description Onaylanmış swing'lerden kümelenmiş destek/direnç ve hacim profili.
+     */
+    get: operations['get_levels_api_v1_market__symbol__levels_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/calibration': {
     parameters: {
       query?: never
@@ -291,6 +331,38 @@ export interface components {
      * @enum {string}
      */
     Horizon: '30m' | '1h' | '4h' | '24h'
+    /**
+     * HorizonSignalsOut
+     * @description Bir ufkun en son canlı tahmini ve o tahmini üreten modül skorları.
+     */
+    HorizonSignalsOut: {
+      /** Horizon */
+      horizon: string
+      /** Label Tr */
+      label_tr: string
+      /** Prediction Id */
+      prediction_id: number | null
+      /** As Of */
+      as_of: string | null
+      /** P Up */
+      p_up: number | null
+      /** Combined Score */
+      combined_score: number | null
+      /** Confidence */
+      confidence: number | null
+      /** Confidence Label */
+      confidence_label: ('low' | 'mid' | 'high') | null
+      /** Conflict */
+      conflict: boolean
+      /** Veto Active */
+      veto_active: boolean
+      /** Modules */
+      modules: components['schemas']['SignalOut'][]
+      /** Report */
+      report: {
+        [key: string]: unknown
+      } | null
+    }
     /** HorizonStateOut */
     HorizonStateOut: {
       /** Horizon */
@@ -329,6 +401,34 @@ export interface components {
      * @enum {string}
      */
     Interval: '1m' | '5m' | '15m' | '1h' | '4h' | '1d'
+    /**
+     * LevelOut
+     * @description Mekanik destek/direnç seviyesi.
+     */
+    LevelOut: {
+      /** Price */
+      price: number
+      /** Kind */
+      kind: string
+      /** Touches */
+      touches: number
+      /** Distance Atr */
+      distance_atr: number | null
+    }
+    /** LevelsOut */
+    LevelsOut: {
+      /** Symbol */
+      symbol: string
+      /** Interval */
+      interval: string
+      /** Price */
+      price: number | null
+      /** Atr */
+      atr: number | null
+      /** Levels */
+      levels: components['schemas']['LevelOut'][]
+      volume_profile: components['schemas']['VolumeProfileOut'] | null
+    }
     /** LiveHealthOut */
     LiveHealthOut: {
       /** Connected */
@@ -496,6 +596,13 @@ export interface components {
       /** Rationale */
       rationale: string[] | null
     }
+    /** SignalsOut */
+    SignalsOut: {
+      /** Symbol */
+      symbol: string
+      /** Horizons */
+      horizons: components['schemas']['HorizonSignalsOut'][]
+    }
     /** SummaryOut */
     SummaryOut: {
       /** N */
@@ -534,6 +641,15 @@ export interface components {
       input?: unknown
       /** Context */
       ctx?: Record<string, never>
+    }
+    /** VolumeProfileOut */
+    VolumeProfileOut: {
+      /** Poc */
+      poc: number
+      /** Value Area Low */
+      value_area_low: number
+      /** Value Area High */
+      value_area_high: number
     }
     /** WsHealthOut */
     WsHealthOut: {
@@ -709,6 +825,70 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['PredictionOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_signals_api_v1_signals__symbol__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        symbol: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SignalsOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_levels_api_v1_market__symbol__levels_get: {
+    parameters: {
+      query?: {
+        interval?: components['schemas']['Interval']
+      }
+      header?: never
+      path: {
+        symbol: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LevelsOut']
         }
       }
       /** @description Validation Error */
