@@ -252,3 +252,40 @@ async def test_weights_are_empty_before_seeding() -> None:
     assert await repo.get_weights(Horizon.H1H) == {}
     assert await repo.count_weights() == 0
     await repo.close()
+
+
+def test_weight_mass_reports_how_much_of_the_evidence_base_is_present() -> None:
+    """Faz 2'de yalnız teknik modül var: kanıt tabanının küçük bir kısmı."""
+    results = [
+        signal("technical", 0.6),
+        SignalResult(module="orderflow", score=0.0, confidence=0.0, coverage=0.0),
+        SignalResult(module="news", score=0.0, confidence=0.0, coverage=0.0),
+        SignalResult(module="macro", score=0.0, confidence=0.0, coverage=0.0),
+        SignalResult(module="sentiment", score=0.0, confidence=0.0, coverage=0.0),
+    ]
+    weights = load_default_weights()[Horizon.H1H]
+    result = combine(results, weights, horizon=Horizon.H1H)
+    assert result.weight_mass == pytest.approx(weights["technical"])
+    assert result.combined_score == pytest.approx(0.6)  # skor yine yeniden dağıtılır
+
+
+def test_a_single_module_does_not_produce_high_confidence() -> None:
+    """Beş modülün dördü yokken "yüksek güven" yanıltıcı olurdu."""
+    results = [signal("technical", 0.6)]
+    weights = load_default_weights()[Horizon.H1H]
+    result = combine(results, weights, horizon=Horizon.H1H)
+    reading = confidence.evaluate(
+        results, result.effective_weights, breadth=result.weight_mass
+    )
+    assert reading.label == "low"
+    assert reading.parts["breadth"] == pytest.approx(weights["technical"])
+
+
+def test_full_evidence_base_allows_high_confidence() -> None:
+    results = [signal(module, 0.5) for module in MODULES]
+    weights = load_default_weights()[Horizon.H1H]
+    result = combine(results, weights, horizon=Horizon.H1H)
+    reading = confidence.evaluate(
+        results, result.effective_weights, breadth=result.weight_mass
+    )
+    assert reading.label in {"mid", "high"}

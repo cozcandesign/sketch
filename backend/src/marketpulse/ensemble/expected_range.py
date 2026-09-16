@@ -55,8 +55,10 @@ def estimate(
         half_width = (atr_horizon + realized) / 2.0
         source = "atr+realized"
     multiplier = EXPANSION_MULTIPLIER if expansion else BASE_MULTIPLIER
-    half_width *= multiplier
-    return ExpectedRange(low=price - half_width, high=price + half_width, source=source)
+    half_width = float(half_width * multiplier)
+    return ExpectedRange(
+        low=float(price - half_width), high=float(price + half_width), source=source
+    )
 
 
 def scale_to_horizon(atr_value: float, horizon: Horizon) -> float:

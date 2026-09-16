@@ -125,7 +125,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 │   │   ├── features/             # indicators.py, levels.py (S/R + hacim profili), feature_store.py
 │   │   ├── signals/              # base.py, technical.py, orderflow.py, news.py, macro.py, sentiment.py
 │   │   ├── ensemble/             # combine.py, confidence.py, veto.py, expected_range.py, conflict.py
-│   │   ├── reporting/            # templates.py, counter_argument.py, banned_words.py
+│   │   ├── reporting/            # templates.py, counter_argument.py, build.py, banned_words.py
 │   │   ├── tracking/             # ledger.py, resolver.py, metrics.py, weekly.py, weight_proposals.py, news_outcomes.py
 │   │   ├── alerts/               # rules.py, evaluator.py
 │   │   ├── llm/                  # client.py, tier1.py (Haiku), tier2.py (Sonnet), router.py, budget.py, dedup.py

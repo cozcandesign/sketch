@@ -3,11 +3,16 @@
 ```
 agreement  = 1 − ağırlıklı_std(score_i)
 coverage   = Σ w_i × coverage_i / Σ w_i
+breadth    = Σ_kullanılan e_i / Σ_yapılandırılmış w_i   # kanıt tabanının ne kadarı var
 track      = Σ w_i × skill_i / Σ w_i         # geçmiş isabet; veri yoksa 0.75
 regime     = 1 − 0.5 × (ATR yüzdelik > 0.9)
 calendar   = 1 − 0.3 × (24 saat içinde importance-3 olay)
-confidence = agreement^0.5 × coverage × track × regime × calendar
+confidence = agreement^0.5 × coverage × breadth × track × regime × calendar
 ```
+
+`breadth` olmasaydı tek modül çalışırken güven "yüksek" görünürdü: yeniden dağıtım o modülü %100
+ağırlığa çıkarır ve "diğer dördü yok" bilgisi kaybolurdu. Faz 2'de yalnızca teknik modül vardır,
+bu yüzden güven bilerek düşüktür; modüller geldikçe kendiliğinden yükselir.
 
 Etiket: `< 0.35 → low`, `< 0.6 → mid`, aksi `high`. Çelişki veya veto varsa etiket en fazla `low`.
 
@@ -49,6 +54,7 @@ def evaluate(
     *,
     conflict_active: bool = False,
     veto_active: bool = False,
+    breadth: float = 1.0,
     skill: Mapping[str, float] | None = None,
     high_volatility: bool = False,
     calendar_event_near: bool = False,
@@ -67,7 +73,7 @@ def evaluate(
     )
     regime = 1.0 - HIGH_VOL_PENALTY * high_volatility
     calendar = 1.0 - CALENDAR_PENALTY * calendar_event_near
-    value = (agreement**0.5) * coverage * track * regime * calendar
+    value = (agreement**0.5) * coverage * breadth * track * regime * calendar
     value = max(0.0, min(1.0, value))
     return ConfidenceReading(
         value=value,
@@ -75,6 +81,7 @@ def evaluate(
         parts={
             "agreement": agreement,
             "coverage": coverage,
+            "breadth": breadth,
             "track": track,
             "regime": regime,
             "calendar": calendar,

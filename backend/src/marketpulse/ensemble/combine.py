@@ -40,6 +40,7 @@ class EnsembleResult:
     conflict: conflict.ConflictReading
     used_modules: tuple[str, ...]
     missing_modules: tuple[str, ...]
+    weight_mass: float  # kullanılan etkin ağırlık / yapılandırılmış toplam ağırlık (0..1)
 
     @property
     def has_signal(self) -> bool:
@@ -53,6 +54,18 @@ def clip_probability(probability: float) -> float:
 
 def sigmoid(value: float) -> float:
     return 1.0 / (1.0 + math.exp(-value))
+
+
+def _weight_mass(effective: Mapping[str, float], weights: Mapping[str, float]) -> float:
+    """Kanıt tabanının ne kadarı gerçekten var?
+
+    Yeniden dağıtım (`Σ e_i` ile bölme) tek modülü %100 ağırlıkta gösterir; bu doğrudur ama
+    "beş modülden dördü yok" bilgisini saklar. Bu oran o bilgiyi taşır ve güveni düşürür.
+    """
+    configured = sum(weight for weight in weights.values() if weight > 0)
+    if configured <= 0:
+        return 0.0
+    return min(1.0, sum(effective.values()) / configured)
 
 
 def combine(
@@ -81,6 +94,7 @@ def combine(
             conflict=conflict.ConflictReading(False, 0.0, (), ()),
             used_modules=(),
             missing_modules=missing,
+            weight_mass=0.0,
         )
 
     total = sum(effective.values())
@@ -101,4 +115,5 @@ def combine(
         conflict=reading,
         used_modules=tuple(sorted(effective)),
         missing_modules=missing,
+        weight_mass=_weight_mass(effective, weights),
     )

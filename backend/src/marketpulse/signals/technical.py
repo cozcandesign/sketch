@@ -26,7 +26,13 @@ from marketpulse.features import indicators as ind
 from marketpulse.features import levels as lv
 from marketpulse.features.snapshot import FeatureSnapshot
 from marketpulse.reporting.templates import render
-from marketpulse.signals.base import ModuleName, SignalResult, clip_score, no_data, weighted_score
+from marketpulse.signals.base import (
+    ModuleName,
+    SignalResult,
+    clip_score,
+    no_data,
+    weighted_score,
+)
 
 COMPONENT_WEIGHTS: Final[Mapping[str, float]] = {
     "trend": 0.40,

@@ -40,9 +40,50 @@ TEMPLATES: Final[dict[str, str]] = {
     "sr_clear": "En yakın destek ve direnç 1 ATR'den uzak: seviye baskısı yok",
     "vol_squeeze": "Volatilite sıkışması (ATR yüzdelik {pct}): kırılım riski var, yön belirsiz",
     "vol_expansion": "Volatilite genişlemesi (ATR yüzdelik {pct}): hareket aralığı geniş",
+    # --- karşıt argüman (ARCHITECTURE.md §10) ---
+    "counter_component": (
+        "Beni yanıltacak şey: {module_tr} modülünde {component_tr} tahminin tersine işaret "
+        "ediyor (skor {score}); bu bileşen ağır basarsa yön değişir."
+    ),
+    "counter_squeeze": (
+        "Beni yanıltacak şey: volatilite sıkışmış; kırılım her iki yöne de olabilir ve "
+        "sıkışma sonrası hareket beklenen aralığı aşabilir."
+    ),
+    "counter_low_coverage": (
+        "Beni yanıltacak şey: veri kapsamı düşük ({coverage}); eksik veri yön hatası üretebilir."
+    ),
+    # --- rapor gövdesi ---
+    "reason_line": "{module_tr}: {text}",
 }
+
+
+MODULE_TR: Final[dict[str, str]] = {
+    "technical": "teknik",
+    "orderflow": "order flow",
+    "news": "haber",
+    "macro": "makro",
+    "sentiment": "duyarlılık",
+}
+
+COMPONENT_TR: Final[dict[str, str]] = {
+    "trend": "trend",
+    "momentum": "momentum",
+    "volume": "hacim",
+    "sr": "destek/direnç",
+    "vol_regime": "volatilite rejimi",
+}
+
+CONFIDENCE_TR: Final[dict[str, str]] = {"low": "düşük", "mid": "orta", "high": "yüksek"}
 
 
 def render(key: str, **fields: object) -> str:
     """Şablonu doldurur. Eksik alan `KeyError` verir; sessizce boş bırakılmaz."""
     return TEMPLATES[key].format(**fields)
+
+
+def module_tr(module: str) -> str:
+    return MODULE_TR.get(module, module)
+
+
+def component_tr(component: str) -> str:
+    return COMPONENT_TR.get(component, component)

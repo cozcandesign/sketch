@@ -137,7 +137,7 @@ Görevler
 - [x] F2-4 `ensemble/`: `combine.py` (ağırlıklı log-odds, `k_h`, K19 kırpma), `confidence.py`,
       `conflict.py`, `expected_range.py`; `weights.default.yaml` yükleyici; `weights` tablosu tohumu + testleri.
       Bu fazda yalnızca technical modülü aktif; diğerleri `coverage=0`.
-- [ ] F2-5 `reporting/`: `templates.py` (teknik modül şablonları), `counter_argument.py`, `build_report()`
+- [x] F2-5 `reporting/`: `templates.py` (teknik modül şablonları), `counter_argument.py`, `build_report()`
       + testleri; yasak kelime testi şablonları tarar.
 - [ ] F2-6 `predict_*` işleri gerçek akışa geçer (snapshot → modüller → ensemble → rapor → ledger);
       modül istisnasında "veri yok" davranışı testi.

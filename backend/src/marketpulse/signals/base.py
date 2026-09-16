@@ -20,6 +20,10 @@ from marketpulse.features.snapshot import FeatureSnapshot
 ModuleName = Literal["technical", "orderflow", "news", "macro", "sentiment"]
 VetoKind = Literal["news", "calendar"]
 
+# Yön taşımayan bileşenler: skora katkı vermezler, yalnızca güveni ve beklenen aralığı etkiler.
+# Karşıt argüman bunları "ters yönde bileşen" saymamalı — yönleri olmadığı için tersi de yoktur.
+NON_DIRECTIONAL_COMPONENTS: frozenset[str] = frozenset({"vol_regime"})
+
 
 class VetoFlag(BaseModel):
     """Modülün "bu tahmine güvenme" uyarısı. Yalnızca news ve macro doldurur."""
