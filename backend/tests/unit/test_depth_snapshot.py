@@ -92,9 +92,7 @@ async def test_the_collector_writes_only_the_depth_columns(
         [OrderflowRow(symbol=SYMBOL, ts=MINUTE, buy_vol=5.0, spread_bps=1.5, trade_count=3)]
     )
     respx.get(f"{BASE}{DEPTH_PATH}").mock(
-        return_value=httpx.Response(
-            200, json=depth_payload([(100.0, 2.0)], [(100.5, 1.0)])
-        )
+        return_value=httpx.Response(200, json=depth_payload([(100.0, 2.0)], [(100.5, 1.0)]))
     )
     collector = DepthSnapshotCollector(futures, repo, FakeClock(T0), symbols=[SYMBOL])
 
@@ -110,9 +108,7 @@ async def test_the_collector_writes_only_the_depth_columns(
 
 
 @respx.mock
-async def test_an_empty_book_writes_nothing(
-    repo: SqliteRepository, futures: FuturesClient
-) -> None:
+async def test_an_empty_book_writes_nothing(repo: SqliteRepository, futures: FuturesClient) -> None:
     respx.get(f"{BASE}{DEPTH_PATH}").mock(
         return_value=httpx.Response(200, json=depth_payload([], []))
     )

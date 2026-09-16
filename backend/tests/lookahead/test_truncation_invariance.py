@@ -3,13 +3,15 @@
 CLAUDE.md §9 madde 7(a) ve (b): kesme değişmezliği ve gelecek perturbasyonu.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+import pandas as pd
 import pytest
 
 from marketpulse.core.types import Horizon, Interval
 from marketpulse.features.feature_store import FeatureStore
 from marketpulse.storage import SqliteRepository, make_engine
+from marketpulse.storage.models import FundingRate, OpenInterestPoint, OrderflowRow
 from marketpulse.tracking import baselines
 from tests.lookahead.conftest import SERIES_START, corrupt_after, random_walk
 
@@ -103,3 +105,92 @@ async def test_feature_snapshot_ignores_corrupted_future_candles(
 
     assert before.frame(interval).equals(after.frame(interval))
     assert before.price == after.price
+
+
+def orderflow_series(count: int, *, start: datetime = SERIES_START) -> list[OrderflowRow]:
+    """Dakikalık order flow serisi (deterministik)."""
+    return [
+        OrderflowRow(
+            symbol="BTCUSDT",
+            ts=start + timedelta(minutes=index),
+            buy_vol=1.0 + (index % 7),
+            sell_vol=0.5 + (index % 5),
+            cvd_delta=0.5 + (index % 3),
+            trade_count=10 + index,
+            liq_long_usd=100.0 * (index % 4),
+            liq_short_usd=50.0 * (index % 3),
+            liq_count=index % 4,
+            top20_imbalance=((index % 5) - 2) / 10.0,
+            coverage_seconds=60.0,
+        )
+        for index in range(count)
+    ]
+
+
+async def test_order_flow_snapshot_equals_the_truncated_database(repo: SqliteRepository) -> None:
+    """Türev veri setleri de `as_of`'ta kesilmiş DB ile birebir aynı olmalı (F3-4)."""
+    rows = orderflow_series(600)
+    as_of = SERIES_START + timedelta(minutes=407)
+    await repo.upsert_orderflow(rows)
+    full = await FeatureStore(repo).snapshot("BTCUSDT", as_of, intervals=[Interval.M1])
+
+    truncated_repo = SqliteRepository(make_engine("sqlite+aiosqlite:///:memory:"))
+    await truncated_repo.create_all()
+    await truncated_repo.upsert_orderflow([row for row in rows if row.ts <= as_of])
+    truncated = await FeatureStore(truncated_repo).snapshot(
+        "BTCUSDT", as_of, intervals=[Interval.M1]
+    )
+    await truncated_repo.close()
+
+    assert full.dataset("orderflow_1m").equals(truncated.dataset("orderflow_1m"))
+    assert full.coverage["orderflow_1m"] == truncated.coverage["orderflow_1m"]
+
+
+async def test_order_flow_snapshot_ignores_rows_written_after_as_of(
+    repo: SqliteRepository,
+) -> None:
+    """Gelecek perturbasyonu: `as_of` sonrası satırlar değişse de snapshot aynı kalır."""
+    rows = orderflow_series(300)
+    as_of = SERIES_START + timedelta(minutes=200)
+    await repo.upsert_orderflow(rows)
+    store = FeatureStore(repo)
+    before = await store.snapshot("BTCUSDT", as_of, intervals=[Interval.M1])
+
+    corrupted = [
+        row.model_copy(update={"buy_vol": 9999.0, "cvd_delta": -9999.0})
+        for row in rows
+        if row.ts > as_of
+    ]
+    await repo.upsert_orderflow(corrupted)
+    after = await store.snapshot("BTCUSDT", as_of, intervals=[Interval.M1])
+
+    assert before.dataset("orderflow_1m").equals(after.dataset("orderflow_1m"))
+
+
+async def test_funding_and_open_interest_are_cut_at_as_of(repo: SqliteRepository) -> None:
+    await repo.upsert_funding_rates(
+        [
+            FundingRate(
+                symbol="BTCUSDT",
+                funding_time=SERIES_START + timedelta(hours=8 * index),
+                rate=0.0001 * index,
+            )
+            for index in range(6)
+        ]
+    )
+    await repo.upsert_open_interest(
+        [
+            OpenInterestPoint(
+                symbol="BTCUSDT",
+                ts=SERIES_START + timedelta(minutes=5 * index),
+                oi=1000.0 + index,
+                source="hist",
+            )
+            for index in range(20)
+        ]
+    )
+    as_of = SERIES_START + timedelta(hours=17)
+    snapshot = await FeatureStore(repo).snapshot("BTCUSDT", as_of, intervals=[Interval.M1])
+
+    assert len(snapshot.dataset("funding")) == 3  # 0, 8, 16. saatler
+    assert snapshot.dataset("open_interest").index.max() <= pd.Timestamp(as_of)

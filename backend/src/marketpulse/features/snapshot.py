@@ -6,7 +6,7 @@ zincirinde de doğrulanabilir (import-linter sözleşmesi).
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Final
 
@@ -27,6 +27,35 @@ FRAME_COLUMNS: Final = (
 )
 PRICE_INTERVAL: Final = Interval.M1  # K16: fiyat referansı spot 1 dk kapanışı
 
+# Türev veri setlerinin sütunları (ARCHITECTURE.md §6.1). Boş çerçeve de bu sütunlarla üretilir ki
+# modüller `df.empty` dışında hiçbir özel durum bilmek zorunda kalmasın.
+DATASET_COLUMNS: Final[Mapping[str, tuple[str, ...]]] = {
+    "funding": ("rate", "mark_price"),
+    "funding_live": ("last_rate", "next_funding_time", "mark_price", "index_price"),
+    "open_interest": ("oi", "oi_value_usd", "source"),
+    "long_short": ("kind", "long_ratio", "short_ratio", "ratio"),
+    "taker_volume": ("buy_vol", "sell_vol", "ratio"),
+    "orderflow_1m": (
+        "buy_vol",
+        "sell_vol",
+        "cvd_delta",
+        "trade_count",
+        "liq_long_usd",
+        "liq_short_usd",
+        "liq_count",
+        "top20_bid_qty",
+        "top20_ask_qty",
+        "top20_imbalance",
+        "depth1pct_bid_usd",
+        "depth1pct_ask_usd",
+        "depth1pct_imbalance",
+        "spread_bps",
+        "coverage_seconds",
+    ),
+    "liquidations": ("side", "qty", "price", "usd"),
+}
+DATASET_NAMES: Final[tuple[str, ...]] = tuple(DATASET_COLUMNS)
+
 
 @dataclass(frozen=True)
 class FeatureSnapshot:
@@ -42,6 +71,16 @@ class FeatureSnapshot:
     coverage: Mapping[str, float]
     freshness: Mapping[str, float]
     price: float | None
+    # Türev veri setleri (Faz 3). Yoksa boş çerçeve gelir; modül "veri yok" der.
+    datasets: Mapping[str, pd.DataFrame] = field(default_factory=dict)
+
+    def dataset(self, name: str) -> pd.DataFrame:
+        """Adlandırılmış türev veri seti; yoksa doğru sütunlu boş çerçeve."""
+        frame = self.datasets.get(name)
+        return frame if frame is not None else dataset_frame(name)
+
+    def has(self, name: str) -> bool:
+        return not self.dataset(name).empty
 
     def frame(self, interval: Interval) -> pd.DataFrame:
         """İstenen zaman diliminin mumları; yoksa boş çerçeve (KeyError değil)."""
@@ -69,13 +108,30 @@ def empty_frame() -> pd.DataFrame:
     )
 
 
+def dataset_frame(name: str, rows: list[dict[str, object]] | None = None) -> pd.DataFrame:
+    """`ts` indeksli veri seti çerçevesi. Satır yoksa sütunlar yine doğru olur."""
+    columns = DATASET_COLUMNS.get(name, ())
+    if not rows:
+        return pd.DataFrame(
+            {column: pd.Series(dtype="object") for column in columns},
+            index=pd.DatetimeIndex([], name="ts"),
+        )
+    frame = pd.DataFrame(rows, index=pd.DatetimeIndex([row["ts"] for row in rows], name="ts"))
+    return frame.drop(columns=["ts", "symbol"], errors="ignore").sort_index()
+
+
 def coverage_key(interval: Interval) -> str:
     return f"candles_{interval.value}"
 
 
 def coverage_ratio(rows: int, interval: Interval, window: timedelta) -> float:
     """Kapsama = mevcut satır / pencereye sığan satır (0..1)."""
-    expected = window / interval.length
+    return coverage_for(rows, interval.length, window)
+
+
+def coverage_for(rows: int, sampling: timedelta, window: timedelta) -> float:
+    """Aynı hesap, örnekleme aralığı doğrudan verildiğinde (türev veri setleri)."""
+    expected = window / sampling
     if expected <= 0:
         return 0.0
     return min(1.0, rows / expected)

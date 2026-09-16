@@ -3,12 +3,14 @@
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
+import pandas as pd
 import pytest
 
 from marketpulse.core.types import Interval
 from marketpulse.features.feature_store import DEFAULT_LOOKBACK, FeatureStore, candles_to_frame
 from marketpulse.features.snapshot import empty_frame
 from marketpulse.storage import Candle, SqliteRepository, make_engine
+from marketpulse.storage.models import FundingRate, OrderflowRow
 
 START = datetime(2026, 1, 1, tzinfo=UTC)
 SYMBOL = "BTCUSDT"
@@ -144,3 +146,76 @@ def test_frame_is_indexed_by_close_time_and_sorted() -> None:
 def test_empty_frame_has_the_same_columns() -> None:
     filled = candles_to_frame(make_candles(2, Interval.M5))
     assert list(empty_frame().columns) == list(filled.columns)
+
+
+# --- türev veri setleri (Faz 3) ---
+
+
+def orderflow_rows(count: int, *, start: datetime = START) -> list[OrderflowRow]:
+    return [
+        OrderflowRow(
+            symbol=SYMBOL,
+            ts=start + timedelta(minutes=index),
+            buy_vol=1.0 + index,
+            sell_vol=0.5,
+            cvd_delta=0.5 + index,
+            trade_count=10,
+            coverage_seconds=60.0,
+        )
+        for index in range(count)
+    ]
+
+
+async def test_snapshot_carries_the_order_flow_datasets(repo: SqliteRepository) -> None:
+    await repo.upsert_orderflow(orderflow_rows(5))
+    await repo.upsert_funding_rates(
+        [FundingRate(symbol=SYMBOL, funding_time=START, rate=0.0001, mark_price=60000.0)]
+    )
+    snapshot = await FeatureStore(repo).snapshot(SYMBOL, START + timedelta(minutes=10))
+
+    orderflow = snapshot.dataset("orderflow_1m")
+    assert len(orderflow) == 5
+    assert orderflow["cvd_delta"].iloc[-1] == pytest.approx(4.5)
+    assert snapshot.has("funding")
+    # funding satırı `funding_time` taşır; snapshot'ta `ts` indeksine normalize edilir
+    assert snapshot.dataset("funding").index[0] == pd.Timestamp(START)
+
+
+async def test_datasets_are_cut_at_as_of(repo: SqliteRepository) -> None:
+    await repo.upsert_orderflow(orderflow_rows(10))
+    cut = START + timedelta(minutes=3)
+    snapshot = await FeatureStore(repo).snapshot(SYMBOL, cut)
+
+    frame = snapshot.dataset("orderflow_1m")
+    assert len(frame) == 4  # 0,1,2,3. dakikalar
+    assert frame.index.max() == pd.Timestamp(cut)
+
+
+async def test_a_missing_dataset_is_an_empty_frame_with_the_right_columns(
+    repo: SqliteRepository,
+) -> None:
+    snapshot = await FeatureStore(repo).snapshot(SYMBOL, START)
+
+    frame = snapshot.dataset("orderflow_1m")
+    assert frame.empty
+    assert "cvd_delta" in frame.columns
+    assert not snapshot.has("orderflow_1m")
+    assert snapshot.coverage["orderflow_1m"] == 0.0
+
+
+async def test_dataset_coverage_reflects_how_much_of_the_window_is_filled(
+    repo: SqliteRepository,
+) -> None:
+    """48 saatlik pencerede 60 dakikalık veri: kapsama düşük olmalı, gizlenmemeli."""
+    await repo.upsert_orderflow(orderflow_rows(60))
+    snapshot = await FeatureStore(repo).snapshot(SYMBOL, START + timedelta(minutes=60))
+
+    assert snapshot.coverage["orderflow_1m"] == pytest.approx(60 / (48 * 60), rel=0.01)
+
+
+async def test_a_stale_dataset_reports_its_age(repo: SqliteRepository) -> None:
+    await repo.upsert_orderflow(orderflow_rows(3))
+    snapshot = await FeatureStore(repo).snapshot(SYMBOL, START + timedelta(minutes=13))
+
+    # Son satır 2. dakikada; 13. dakikada bakıldığında 11 dakika bayat.
+    assert snapshot.freshness["orderflow_1m"] == pytest.approx(11.0)
