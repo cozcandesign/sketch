@@ -24,6 +24,7 @@ from marketpulse.features.feature_store import FeatureStore
 from marketpulse.features.snapshot import FeatureSnapshot
 from marketpulse.reporting.build import build_report
 from marketpulse.signals.base import SignalModule, SignalResult, no_data
+from marketpulse.signals.orderflow import OrderflowModule
 from marketpulse.signals.technical import TechnicalModule
 from marketpulse.storage.models import NewPrediction, SignalRow
 from marketpulse.storage.outbox import Outbox
@@ -37,8 +38,8 @@ EXPANSION_LEVEL = 0.8  # vol_regime ölçeği: -1 sıkışma, +1 genişleme
 
 
 def default_modules() -> tuple[SignalModule, ...]:
-    """Faz 2'de tek modül. Sonraki fazlar bu listeye ekler."""
-    return (TechnicalModule(),)
+    """Çalışan sinyal modülleri. Sonraki fazlar bu listeye ekler (haber, makro, sentiment)."""
+    return (TechnicalModule(), OrderflowModule())
 
 
 class LivePredictor:

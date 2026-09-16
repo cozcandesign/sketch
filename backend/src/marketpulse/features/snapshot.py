@@ -117,7 +117,13 @@ def dataset_frame(name: str, rows: list[dict[str, object]] | None = None) -> pd.
             index=pd.DatetimeIndex([], name="ts"),
         )
     frame = pd.DataFrame(rows, index=pd.DatetimeIndex([row["ts"] for row in rows], name="ts"))
-    return frame.drop(columns=["ts", "symbol"], errors="ignore").sort_index()
+    frame = frame.drop(columns=["ts", "symbol"], errors="ignore").sort_index()
+    # Eksik sütunlar NaN olarak eklenir: modüller sütunun varlığını değil, değerin olup olmadığını
+    # kontrol etsin. (Veri kaynağı bir alanı hiç yazmamış olabilir.)
+    missing = [column for column in columns if column not in frame.columns]
+    for column in missing:
+        frame[column] = pd.Series(dtype="float64")
+    return frame
 
 
 def coverage_key(interval: Interval) -> str:

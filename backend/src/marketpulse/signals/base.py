@@ -9,6 +9,7 @@ kullanabilmesinin (CLAUDE.md §9.5) ön koşuludur.
 """
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
 
@@ -53,6 +54,14 @@ class SignalResult(BaseModel):
     def has_data(self) -> bool:
         """Kapsama sıfırsa modül "veri yok" demiştir; ensemble ağırlığını dağıtır."""
         return self.coverage > 0.0
+
+
+@dataclass(frozen=True)
+class Component:
+    """Tek alt skor ve onu açıklayan cümle(ler). Modüller bunları birleştirip skor üretir."""
+
+    score: float
+    rationale: tuple[str, ...] = ()
 
 
 class SignalModule(Protocol):

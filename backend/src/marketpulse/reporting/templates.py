@@ -40,6 +40,39 @@ TEMPLATES: Final[dict[str, str]] = {
     "sr_clear": "En yakın destek ve direnç 1 ATR'den uzak: seviye baskısı yok",
     "vol_squeeze": "Volatilite sıkışması (ATR yüzdelik {pct}): kırılım riski var, yön belirsiz",
     "vol_expansion": "Volatilite genişlemesi (ATR yüzdelik {pct}): hareket aralığı geniş",
+    # --- order flow modülü (ARCHITECTURE.md §8.3) ---
+    "funding_neutral": "Funding {rate}: olağan aralıkta, taraflardan biri kalabalık değil",
+    "funding_long_crowded": (
+        "Funding {rate} ({z}σ): long tarafı kalabalık; kalabalık taraf genelde ters yönde öder"
+    ),
+    "funding_short_crowded": (
+        "Funding {rate} ({z}σ): short tarafı kalabalık; kalabalık taraf genelde ters yönde öder"
+    ),
+    "oi_real_buying": (
+        "Açık pozisyon {oi_pct} artarken fiyat {price_pct} yükseldi: yeni alım pozisyonu giriyor"
+    ),
+    "oi_short_building": (
+        "Açık pozisyon {oi_pct} artarken fiyat {price_pct} geriledi: short birikimi"
+    ),
+    "oi_short_covering": (
+        "Açık pozisyon {oi_pct} azalırken fiyat {price_pct} yükseldi: short kapanışı (zayıf sinyal)"
+    ),
+    "oi_long_unwinding": (
+        "Açık pozisyon {oi_pct} azalırken fiyat {price_pct} geriledi: long çözülüyor (zayıf sinyal)"
+    ),
+    "liq_quiet": "Pencerede kayda değer zorunlu kapatma yok",
+    "liq_short": "Zorunlu kapatmaların ağırlığı short tarafta ({side_usd} / {usd}): zorunlu alım",
+    "liq_long": "Zorunlu kapatmaların ağırlığı long tarafta ({side_usd} / {usd}): zorunlu satış",
+    "liq_capitulation": (
+        "Zorunlu kapatma hacmi olağanın 3 katını aştı ({usd}): tükeniş olasılığı, "
+        "işaret ters çevrildi"
+    ),
+    "book_bid_heavy": "Order book alış tarafında yoğun ({pct} dengesizlik)",
+    "book_ask_heavy": "Order book satış tarafında yoğun ({pct} dengesizlik)",
+    "cvd_flow": "Agresif işlemlerin net yönü {pct} (hacme oranla)",
+    "cvd_aligned": "Agresif akış ({pct}) fiyat yönüyle uyumlu: teyit, yeni bilgi az",
+    "cvd_absorption": "Fiyat gerilerken agresif alım sürüyor ({pct}): birikim işareti",
+    "cvd_distribution": "Fiyat yükselirken agresif satış sürüyor ({pct}): dağıtım işareti",
     # --- karşıt argüman (ARCHITECTURE.md §10) ---
     "counter_component": (
         "Beni yanıltacak şey: {module_tr} modülünde {component_tr} tahminin tersine işaret "

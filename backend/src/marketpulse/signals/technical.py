@@ -16,7 +16,6 @@ saftır (ağ/DB/saat yok), bu yüzden aynı snapshot her zaman aynı sonucu veri
 
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import Final
 
 import pandas as pd
@@ -27,6 +26,7 @@ from marketpulse.features import levels as lv
 from marketpulse.features.snapshot import FeatureSnapshot
 from marketpulse.reporting.templates import render
 from marketpulse.signals.base import (
+    Component,
     ModuleName,
     SignalResult,
     clip_score,
@@ -58,14 +58,6 @@ VOLUME_WEAK_RATIO: Final = 0.9
 # Kapsama: ana zaman dilimi belirleyici, bağlam destekleyici.
 BASE_COVERAGE_SHARE: Final = 0.75
 MAX_RATIONALE: Final = 5
-
-
-@dataclass(frozen=True)
-class Component:
-    """Tek alt skor ve onu açıklayan cümle(ler)."""
-
-    score: float
-    rationale: tuple[str, ...] = ()
 
 
 class TechnicalModule:

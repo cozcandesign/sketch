@@ -491,10 +491,10 @@ Her modül `score = Σ w_i · component_i / Σ w_i` (modül içi sabit ağırlı
 | Bileşen | Ağırlık | Hesap |
 |---|---|---|
 | `funding_dev` | 0.20 | Anlık funding'in 30 günlük dağılıma göre z-skoru. Aşırı pozitif (z>2) → long kalabalık → ters: `score = −clip(z/3)`. \|z\|<1 nötr. |
-| `oi_price` | 0.30 | Pencerede OI değişimi (%) ve fiyat değişimi (%), 30 günlük z. OI↑ fiyat↑ = gerçek alım (+), OI↑ fiyat↓ = short birikimi (−), OI↓ fiyat↑ = short kapatma (zayıf +, ×0.5), OI↓ fiyat↓ = long tasfiyesi (zayıf −, ×0.5). Büyüklük `min(\|z_oi\|,\|z_p\|)/3`. |
+| `oi_price` | 0.30 | Pencerede OI değişimi (%) ve fiyat değişimi (%). **Yön ham değişimin işaretinden**, büyüklük z-skorundan gelir (`min(\|z_oi\|,\|z_p\|)/3`): yükselen bir seride son değişim ortalamanın altında kalıp z'yi negatif yapabilir, bu yön değil "olağan dışılık" bilgisidir. OI↑ fiyat↑ = gerçek alım (+), OI↑ fiyat↓ = short birikimi (−), OI↓ fiyat↑ = short kapatma (zayıf +, ×0.5), OI↓ fiyat↓ = long tasfiyesi (zayıf −, ×0.5). |
 | `liquidations` | 0.15 | Pencerede net likidasyon `(liq_short_usd − liq_long_usd)/(toplam+ε)`, 24 saatlik medyan hacme göre ölçekli; son 24 saatin likidasyonları fiyat seviyelerine göre kümelenir (0.25×ATR kovaları) ve en yakın küme mesafesi rapora yazılır. Hacim 24s medyanın 3 katını aşınca ters işaret (kapitülasyon/squeeze), aksi halde yönle aynı. |
 | `book_imbalance` | 0.15 | `top20_imbalance` 5 dk ortalaması ve `depth1pct_imbalance`, eşit ağırlık. `clip(imb × 2)`. |
-| `cvd` | 0.20 | Pencerede CVD eğimi (ATR-normalize) ve fiyatla uyumsuzluk: fiyat↑ CVD↓ → − (dağıtım), fiyat↓ CVD↑ → + (birikim). Uyumluysa yön × 0.5. |
+| `cvd` | 0.20 | Pencerede net agresif akış **hacme oranlanır** (`Σ cvd_delta / Σ (buy+sell)`), ATR ile değil: CVD hacim birimindedir, fiyat birimiyle normalize edilemez. Fiyatla uyumsuzluk: fiyat↑ CVD↓ → − (dağıtım), fiyat↓ CVD↑ → + (birikim). Uyumluysa yön × 0.5. |
 
 Long/short oranı ayrı bileşen değil: `funding_dev` ile aynı "kalabalık" bilgisini taşır; sentiment
 modülünde kullanılır. Modül `confidence` = kapsama (özellikle `coverage_seconds`) × tazelik × bileşen uyumu.

@@ -99,11 +99,11 @@ def test_signals_endpoint_returns_a_module_breakdown_per_horizon(
     assert [h["horizon"] for h in body["horizons"]] == [h.value for h in Horizon]
     for horizon in body["horizons"]:
         assert horizon["p_up"] is not None
-        assert horizon["modules"], horizon["horizon"]
-        module = horizon["modules"][0]
-        assert module["module"] == "technical"
-        assert -1.0 <= module["score"] <= 1.0
-        assert module["rationale"]
+        modules = {module["module"]: module for module in horizon["modules"]}
+        assert set(modules) == {"technical", "orderflow"}
+        technical = modules["technical"]
+        assert -1.0 <= technical["score"] <= 1.0
+        assert technical["rationale"]
         assert horizon["report"]["headline"]
 
 

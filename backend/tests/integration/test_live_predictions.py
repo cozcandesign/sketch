@@ -19,6 +19,7 @@ from marketpulse.reporting.banned_words import find_banned
 from marketpulse.signals.base import ModuleName, SignalResult
 from marketpulse.signals.technical import TechnicalModule
 from marketpulse.storage import Candle, Outbox, SqliteRepository, make_engine
+from marketpulse.storage.models import FundingRate, OpenInterestPoint, OrderflowRow
 from marketpulse.tracking.ledger import Ledger
 
 START = datetime(2026, 2, 1, tzinfo=UTC)
@@ -89,8 +90,13 @@ async def test_a_live_prediction_is_written_with_signals_and_a_report(
     assert 0.10 <= prediction.p_up <= 0.90  # K19
     assert prediction.target_at == AS_OF + Horizon.H1H.length
     assert prediction.signals is not None
-    assert [row.module for row in prediction.signals] == ["technical"]
-    assert prediction.signals[0].rationale
+    modules = {row.module: row for row in prediction.signals}
+    assert set(modules) == {"technical", "orderflow"}
+    assert modules["technical"].rationale
+    # Bu testte türev verisi yok: order flow "veri yok" der ve ensemble ağırlığını dağıtır.
+    assert modules["orderflow"].coverage == 0.0
+    assert prediction.report is not None
+    assert prediction.report["missing"] == ["orderflow"]
 
 
 async def test_the_report_is_complete_and_free_of_banned_words(repo: SqliteRepository) -> None:
@@ -204,3 +210,92 @@ async def test_the_prediction_event_reaches_the_outbox(repo: SqliteRepository) -
     events = await repo.outbox_read_after(0)
     topics = [event.topic for event in events]
     assert "prediction.created" in topics
+
+
+async def orderflow_history(repo: SqliteRepository, *, minutes: int = 240) -> None:
+    """Dakikalık order flow geçmişi: agresif alım baskısı ve dolu order book."""
+    rows = [
+        OrderflowRow(
+            symbol=SYMBOL,
+            ts=AS_OF - timedelta(minutes=minutes - index),
+            buy_vol=12.0,
+            sell_vol=8.0,
+            cvd_delta=4.0,
+            trade_count=40,
+            liq_long_usd=0.0,
+            liq_short_usd=0.0,
+            liq_count=0,
+            top20_imbalance=0.25,
+            depth1pct_imbalance=0.2,
+            coverage_seconds=60.0,
+        )
+        for index in range(minutes)
+    ]
+    await repo.upsert_orderflow(rows)
+    await repo.upsert_open_interest(
+        [
+            OpenInterestPoint(
+                symbol=SYMBOL,
+                ts=AS_OF - timedelta(minutes=5 * (60 - index)),
+                oi=1000.0 + index * 4.0,
+                source="hist",
+            )
+            for index in range(60)
+        ]
+    )
+    await repo.upsert_funding_rates(
+        [
+            FundingRate(
+                symbol=SYMBOL,
+                funding_time=AS_OF - timedelta(hours=8 * (20 - index)),
+                rate=0.0001,
+            )
+            for index in range(20)
+        ]
+    )
+
+
+async def test_order_flow_joins_the_prediction_when_its_data_exists(
+    repo: SqliteRepository,
+) -> None:
+    await seed_market(repo)
+    await orderflow_history(repo)
+    clock = FakeClock(AS_OF)
+    await predictor_for(repo, clock).run(symbols=[SYMBOL], horizon=Horizon.H1H, as_of=AS_OF)
+
+    prediction = await repo.get_prediction((await repo.list_predictions(source="live"))[0].id)
+    assert prediction is not None
+    assert prediction.signals is not None
+    orderflow = next(row for row in prediction.signals if row.module == "orderflow")
+    assert orderflow.coverage > 0
+    assert orderflow.rationale
+    assert prediction.report is not None
+    assert prediction.report["missing"] == []
+    assert prediction.weights is not None
+    assert set(prediction.weights) == {"technical", "orderflow"}
+
+
+async def test_an_order_flow_outage_lowers_confidence_but_still_predicts(
+    repo: SqliteRepository,
+) -> None:
+    """WS kesintisi: kapsama düşer, tahmin yine üretilir, güven azalır (Faz 3 bitti ölçütü)."""
+    await seed_market(repo)
+    await orderflow_history(repo)
+    clock = FakeClock(AS_OF)
+    predictor = predictor_for(repo, clock)
+    await predictor.run(symbols=[SYMBOL], horizon=Horizon.H1H, as_of=AS_OF)
+    healthy = (await repo.list_predictions(source="live"))[0]
+
+    # Aynı dakikalar, ama bağlantı dakikanın yalnızca 6 saniyesinde açıkmış.
+    await repo.upsert_orderflow(
+        [
+            OrderflowRow(symbol=SYMBOL, ts=AS_OF - timedelta(minutes=index), coverage_seconds=6.0)
+            for index in range(240)
+        ]
+    )
+    await predictor.run(symbols=[SYMBOL], horizon=Horizon.H1H, as_of=AS_OF)
+    degraded = (await repo.list_predictions(source="live"))[0]
+
+    assert degraded.id != healthy.id
+    assert degraded.confidence < healthy.confidence
+    assert degraded.p_up != 0.5 or degraded.combined_score is not None  # tahmin yine üretildi

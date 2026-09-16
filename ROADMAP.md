@@ -188,9 +188,9 @@ Görevler
 - [x] F3-3 `collectors/depth_snapshot` (REST 500 seviye, ±%1 derinlik) + testi.
 - [x] F3-4 `FeatureStore`: funding, OI, LS, taker, orderflow_1m, liquidations veri setleri; kesme ve kapsama
       + `truncation_invariance` genişletme.
-- [ ] F3-5 `signals/orderflow.py`: funding_dev, oi_price (4 durum), liquidations, book_imbalance, cvd +
+- [x] F3-5 `signals/orderflow.py`: funding_dev, oi_price (4 durum), liquidations, book_imbalance, cvd +
       unit testleri (her durum için sentetik seri) + `future_perturbation`.
-- [ ] F3-6 Şablonlar: order flow gerekçeleri; ensemble'da orderflow aktif.
+- [x] F3-6 Şablonlar: order flow gerekçeleri; ensemble'da orderflow aktif.
 - [ ] F3-7 API: `GET /market/{symbol}/orderflow`; `/market/{symbol}` içine funding/OI/LS özetleri.
 - [ ] F3-8 Frontend: Coin detay alt panelleri — `FundingPanel`, `OIPanel` (OI + fiyat, durum etiketi),
       `LiquidationPanel`, `OrderBookPanel`, `CVDPanel`; `ModuleBreakdown`'da orderflow bileşenleri.
