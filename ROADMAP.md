@@ -201,6 +201,22 @@ Bitti sayılır
 - Order flow modülü tahminlere katılıyor; kalibrasyon ekranı modül tablosunda ayrı satırı var.
 - Bir WS kesintisi simülasyonunda modül `coverage` düşürüyor, tahmin yine üretiliyor, güven düşüyor (test).
 
+Faz 3 durum notu (geliştirme ortamında doğrulandı)
+- Doğrulandı: `make check` (438 backend + 59 arayüz testi), `/market/{symbol}/orderflow` ucu, coin
+  ekranındaki beş order flow paneli (funding + long/short, açık pozisyon, zorunlu kapatmalar,
+  order book, CVD), kapsama rozeti, kalibrasyon ekranında order flow'un ayrı satırı. Tarayıcı
+  konsolunda hata yok. WS kesintisi ölçütü testle karşılanıyor
+  (`test_an_order_flow_outage_lowers_confidence_but_still_predicts`).
+- **Bu ortamdan `fapi.binance.com` ve `api.binance.com` erişilemiyor (HTTP 000).** Collector'lar
+  belgelenmiş yanıt biçimlerine göre yazıldı ve `respx` ile kaydedilmiş yanıtlarla test edildi;
+  panellerin doldu mu diye bakılan veri **sentetiktir, piyasa verisi değildir** ve yalnızca
+  scratchpad veritabanına yazıldı. Gerçek futures verisiyle ilk çalışma kullanıcının makinesinde olur.
+- **Açık kalan bitti ölçütü:** "WS akışları 24 saat kesintisiz, `coverage_seconds` ortalaması
+  > 3500/3600" burada ölçülemez; kullanıcının makinesinde bir gün çalıştıktan sonra
+  `/market/{symbol}/orderflow` kapsama rozetinden okunacak.
+- Kalibrasyon tablosunda order flow satırı "veri yetersiz" görünür: modül yeni katıldı, henüz
+  çözümlenmiş tahmini yok. Hüküm 200 çözümlenmiş tahminden sonra verilir (K26).
+
 ---
 
 ## Faz 4 — Haber + iki kademeli LLM + veto + maliyet (4 oturum)
