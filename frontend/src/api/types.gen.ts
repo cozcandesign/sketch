@@ -146,6 +146,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/market/{symbol}/orderflow': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Orderflow */
+    get: operations['get_orderflow_api_v1_market__symbol__orderflow_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/calibration': {
     parameters: {
       query?: never
@@ -290,6 +307,26 @@ export interface components {
       /** Size Bytes */
       size_bytes: number | null
     }
+    /**
+     * DerivativesOut
+     * @description Piyasa durumu şeridi için türev özeti; ayrıntı `/market/{symbol}/orderflow` ucunda.
+     */
+    DerivativesOut: {
+      /** Funding Rate */
+      funding_rate?: number | null
+      /** Funding Zscore */
+      funding_zscore?: number | null
+      /** Next Funding Time */
+      next_funding_time?: string | null
+      /** Open Interest */
+      open_interest?: number | null
+      /** Open Interest Change 24H */
+      open_interest_change_24h?: number | null
+      /** Long Short Ratio */
+      long_short_ratio?: number | null
+      /** Orderflow Coverage */
+      orderflow_coverage?: number | null
+    }
     /** EngineHealthOut */
     EngineHealthOut: {
       /** Alive */
@@ -300,6 +337,22 @@ export interface components {
       age_seconds: number | null
       /** Version */
       version: string | null
+    }
+    /**
+     * FundingOut
+     * @description Anlık funding durumu ve son gerçekleşen ödemeler.
+     */
+    FundingOut: {
+      /** Last Rate */
+      last_rate: number | null
+      /** Next Funding Time */
+      next_funding_time: string | null
+      /** Mark Price */
+      mark_price: number | null
+      /** Average 30D */
+      average_30d: number | null
+      /** Zscore */
+      zscore: number | null
     }
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -433,6 +486,22 @@ export interface components {
       levels: components['schemas']['LevelOut'][]
       volume_profile: components['schemas']['VolumeProfileOut'] | null
     }
+    /** LiquidationOut */
+    LiquidationOut: {
+      /**
+       * Ts
+       * Format: date-time
+       */
+      ts: string
+      /** Side */
+      side: string
+      /** Qty */
+      qty: number
+      /** Price */
+      price: number
+      /** Usd */
+      usd: number
+    }
     /** LiveHealthOut */
     LiveHealthOut: {
       /** Connected */
@@ -444,6 +513,22 @@ export interface components {
       /** Reconnects */
       reconnects: number
     }
+    /** LongShortOut */
+    LongShortOut: {
+      /** Kind */
+      kind: string
+      /** Long Ratio */
+      long_ratio: number
+      /** Short Ratio */
+      short_ratio: number
+      /** Ratio */
+      ratio: number
+      /**
+       * Ts
+       * Format: date-time
+       */
+      ts: string
+    }
     /** MarketStateOut */
     MarketStateOut: {
       /** Symbol */
@@ -451,6 +536,7 @@ export interface components {
       price: components['schemas']['PriceOut']
       /** Coverage */
       coverage: components['schemas']['CandleCoverageOut'][]
+      derivatives: components['schemas']['DerivativesOut']
       /** Horizons */
       horizons: components['schemas']['HorizonStateOut'][]
     }
@@ -500,6 +586,63 @@ export interface components {
       beats_reference: boolean | null
       /** Has Proof Sample */
       has_proof_sample: boolean
+    }
+    /** OpenInterestOut */
+    OpenInterestOut: {
+      /** Latest */
+      latest: number | null
+      /** Ts */
+      ts: string | null
+      /** Change 24H */
+      change_24h: number | null
+    }
+    /** OrderflowOut */
+    OrderflowOut: {
+      /** Symbol */
+      symbol: string
+      /** Minutes */
+      minutes: components['schemas']['OrderflowPointOut'][]
+      /** Liquidations */
+      liquidations: components['schemas']['LiquidationOut'][]
+      funding: components['schemas']['FundingOut']
+      open_interest: components['schemas']['OpenInterestOut']
+      /** Long Short */
+      long_short: components['schemas']['LongShortOut'][]
+      /** Coverage Ratio */
+      coverage_ratio: number
+    }
+    /**
+     * OrderflowPointOut
+     * @description Bir dakikalık order flow özeti (panel grafikleri için).
+     */
+    OrderflowPointOut: {
+      /**
+       * Ts
+       * Format: date-time
+       */
+      ts: string
+      /** Buy Vol */
+      buy_vol: number | null
+      /** Sell Vol */
+      sell_vol: number | null
+      /** Cvd Delta */
+      cvd_delta: number | null
+      /** Cvd Cumulative */
+      cvd_cumulative: number
+      /** Trade Count */
+      trade_count: number | null
+      /** Liq Long Usd */
+      liq_long_usd: number | null
+      /** Liq Short Usd */
+      liq_short_usd: number | null
+      /** Top20 Imbalance */
+      top20_imbalance: number | null
+      /** Depth1Pct Imbalance */
+      depth1pct_imbalance: number | null
+      /** Spread Bps */
+      spread_bps: number | null
+      /** Coverage Seconds */
+      coverage_seconds: number | null
     }
     /** OutboxHealthOut */
     OutboxHealthOut: {
@@ -917,6 +1060,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['LevelsOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_orderflow_api_v1_market__symbol__orderflow_get: {
+    parameters: {
+      query?: {
+        minutes?: number
+      }
+      header?: never
+      path: {
+        symbol: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['OrderflowOut']
         }
       }
       /** @description Validation Error */

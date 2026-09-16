@@ -12,7 +12,7 @@
     "typecheck": "tsc -b",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
-    "gen-types": "openapi-typescript openapi.json -o src/api/types.gen.ts"
+    "gen-types": "openapi-typescript openapi.json -o src/api/types.gen.ts && prettier --write src/api/types.gen.ts"
   },
   "keywords": [],
   "author": "",

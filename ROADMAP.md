@@ -191,7 +191,7 @@ Görevler
 - [x] F3-5 `signals/orderflow.py`: funding_dev, oi_price (4 durum), liquidations, book_imbalance, cvd +
       unit testleri (her durum için sentetik seri) + `future_perturbation`.
 - [x] F3-6 Şablonlar: order flow gerekçeleri; ensemble'da orderflow aktif.
-- [ ] F3-7 API: `GET /market/{symbol}/orderflow`; `/market/{symbol}` içine funding/OI/LS özetleri.
+- [x] F3-7 API: `GET /market/{symbol}/orderflow`; `/market/{symbol}` içine funding/OI/LS özetleri.
 - [ ] F3-8 Frontend: Coin detay alt panelleri — `FundingPanel`, `OIPanel` (OI + fiyat, durum etiketi),
       `LiquidationPanel`, `OrderBookPanel`, `CVDPanel`; `ModuleBreakdown`'da orderflow bileşenleri.
 - [x] F3-9 Retention: orderflow_1m ve liquidations 90 gün.

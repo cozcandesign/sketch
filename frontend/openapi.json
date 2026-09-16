@@ -436,6 +436,60 @@
         }
       }
     },
+    "/api/v1/market/{symbol}/orderflow": {
+      "get": {
+        "tags": [
+          "orderflow"
+        ],
+        "summary": "Get Orderflow",
+        "operationId": "get_orderflow_api_v1_market__symbol__orderflow_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "minutes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1440,
+              "minimum": 5,
+              "default": 240,
+              "title": "Minutes"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderflowOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/calibration": {
       "get": {
         "tags": [
@@ -934,6 +988,91 @@
         ],
         "title": "DbHealthOut"
       },
+      "DerivativesOut": {
+        "properties": {
+          "funding_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funding Rate"
+          },
+          "funding_zscore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funding Zscore"
+          },
+          "next_funding_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Funding Time"
+          },
+          "open_interest": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Interest"
+          },
+          "open_interest_change_24h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Interest Change 24H"
+          },
+          "long_short_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Short Ratio"
+          },
+          "orderflow_coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orderflow Coverage"
+          }
+        },
+        "type": "object",
+        "title": "DerivativesOut",
+        "description": "Piyasa durumu şeridi için türev özeti; ayrıntı `/market/{symbol}/orderflow` ucunda."
+      },
       "EngineHealthOut": {
         "properties": {
           "alive": {
@@ -983,6 +1122,76 @@
           "version"
         ],
         "title": "EngineHealthOut"
+      },
+      "FundingOut": {
+        "properties": {
+          "last_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Rate"
+          },
+          "next_funding_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Funding Time"
+          },
+          "mark_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mark Price"
+          },
+          "average_30d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average 30D"
+          },
+          "zscore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zscore"
+          }
+        },
+        "type": "object",
+        "required": [
+          "last_rate",
+          "next_funding_time",
+          "mark_price",
+          "average_30d",
+          "zscore"
+        ],
+        "title": "FundingOut",
+        "description": "Anlık funding durumu ve son gerçekleşen ödemeler."
       },
       "HTTPValidationError": {
         "properties": {
@@ -1433,6 +1642,40 @@
         ],
         "title": "LevelsOut"
       },
+      "LiquidationOut": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "usd": {
+            "type": "number",
+            "title": "Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "side",
+          "qty",
+          "price",
+          "usd"
+        ],
+        "title": "LiquidationOut"
+      },
       "LiveHealthOut": {
         "properties": {
           "connected": {
@@ -1469,6 +1712,40 @@
         ],
         "title": "LiveHealthOut"
       },
+      "LongShortOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "long_ratio": {
+            "type": "number",
+            "title": "Long Ratio"
+          },
+          "short_ratio": {
+            "type": "number",
+            "title": "Short Ratio"
+          },
+          "ratio": {
+            "type": "number",
+            "title": "Ratio"
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "long_ratio",
+          "short_ratio",
+          "ratio",
+          "ts"
+        ],
+        "title": "LongShortOut"
+      },
       "MarketStateOut": {
         "properties": {
           "symbol": {
@@ -1485,6 +1762,9 @@
             "type": "array",
             "title": "Coverage"
           },
+          "derivatives": {
+            "$ref": "#/components/schemas/DerivativesOut"
+          },
           "horizons": {
             "items": {
               "$ref": "#/components/schemas/HorizonStateOut"
@@ -1498,6 +1778,7 @@
           "symbol",
           "price",
           "coverage",
+          "derivatives",
           "horizons"
         ],
         "title": "MarketStateOut"
@@ -1683,6 +1964,241 @@
         ],
         "title": "ModuleSummaryOut",
         "description": "Modül yön isabeti ve referansla karşılaştırma (K26)."
+      },
+      "OpenInterestOut": {
+        "properties": {
+          "latest": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest"
+          },
+          "ts": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ts"
+          },
+          "change_24h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change 24H"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latest",
+          "ts",
+          "change_24h"
+        ],
+        "title": "OpenInterestOut"
+      },
+      "OrderflowOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "minutes": {
+            "items": {
+              "$ref": "#/components/schemas/OrderflowPointOut"
+            },
+            "type": "array",
+            "title": "Minutes"
+          },
+          "liquidations": {
+            "items": {
+              "$ref": "#/components/schemas/LiquidationOut"
+            },
+            "type": "array",
+            "title": "Liquidations"
+          },
+          "funding": {
+            "$ref": "#/components/schemas/FundingOut"
+          },
+          "open_interest": {
+            "$ref": "#/components/schemas/OpenInterestOut"
+          },
+          "long_short": {
+            "items": {
+              "$ref": "#/components/schemas/LongShortOut"
+            },
+            "type": "array",
+            "title": "Long Short"
+          },
+          "coverage_ratio": {
+            "type": "number",
+            "title": "Coverage Ratio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "minutes",
+          "liquidations",
+          "funding",
+          "open_interest",
+          "long_short",
+          "coverage_ratio"
+        ],
+        "title": "OrderflowOut"
+      },
+      "OrderflowPointOut": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "buy_vol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buy Vol"
+          },
+          "sell_vol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sell Vol"
+          },
+          "cvd_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cvd Delta"
+          },
+          "cvd_cumulative": {
+            "type": "number",
+            "title": "Cvd Cumulative"
+          },
+          "trade_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Count"
+          },
+          "liq_long_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liq Long Usd"
+          },
+          "liq_short_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liq Short Usd"
+          },
+          "top20_imbalance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top20 Imbalance"
+          },
+          "depth1pct_imbalance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depth1Pct Imbalance"
+          },
+          "spread_bps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spread Bps"
+          },
+          "coverage_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "buy_vol",
+          "sell_vol",
+          "cvd_delta",
+          "cvd_cumulative",
+          "trade_count",
+          "liq_long_usd",
+          "liq_short_usd",
+          "top20_imbalance",
+          "depth1pct_imbalance",
+          "spread_bps",
+          "coverage_seconds"
+        ],
+        "title": "OrderflowPointOut",
+        "description": "Bir dakikalık order flow özeti (panel grafikleri için)."
       },
       "OutboxHealthOut": {
         "properties": {

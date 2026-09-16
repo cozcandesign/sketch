@@ -67,6 +67,15 @@ export const marketState: MarketState = {
   symbol: 'BTCUSDT',
   price: { last: 63_000, change_24h: 0.05, as_of: '2026-01-01T12:00:00Z', stale: false },
   coverage: [{ interval: '1m', count: 1440, last_close_time: '2026-01-01T12:00:00Z' }],
+  derivatives: {
+    funding_rate: 0.0001,
+    funding_zscore: 0.4,
+    next_funding_time: '2026-01-01T16:00:00Z',
+    open_interest: 82_000,
+    open_interest_change_24h: 0.03,
+    long_short_ratio: 1.2,
+    orderflow_coverage: 0.98,
+  },
   horizons: [
     {
       horizon: '30m',

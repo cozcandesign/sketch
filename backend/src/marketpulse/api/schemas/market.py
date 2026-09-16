@@ -32,12 +32,27 @@ class HorizonStateOut(BaseModel):
     predictions: list[PredictionOut]
 
 
+class DerivativesOut(BaseModel):
+    """Piyasa durumu şeridi için türev özeti; ayrıntı `/market/{symbol}/orderflow` ucunda."""
+
+    model_config = ConfigDict(frozen=True)
+
+    funding_rate: float | None = None
+    funding_zscore: float | None = None
+    next_funding_time: datetime | None = None
+    open_interest: float | None = None
+    open_interest_change_24h: float | None = None
+    long_short_ratio: float | None = None
+    orderflow_coverage: float | None = None
+
+
 class MarketStateOut(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     symbol: str
     price: PriceOut
     coverage: list[CandleCoverageOut]
+    derivatives: DerivativesOut
     horizons: list[HorizonStateOut]
 
 

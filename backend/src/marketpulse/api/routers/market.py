@@ -1,15 +1,23 @@
 """`/market`: canlı fiyat, mum kapsamı ve ufuk bazlı son tahminler."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from marketpulse.api.deps import get_clock, get_repo, get_settings
+from marketpulse.api.derivatives import (
+    FUNDING_WINDOW,
+    OI_WINDOW,
+    coverage_ratio,
+    funding_zscore,
+    open_interest_summary,
+)
 from marketpulse.api.schemas.market import (
     CandleCoverageOut,
     CandleOut,
     CandlesOut,
+    DerivativesOut,
     HorizonStateOut,
     MarketStateOut,
     PriceOut,
@@ -85,6 +93,7 @@ async def get_market(
 
     return MarketStateOut(
         symbol=normalized,
+        derivatives=await _derivatives(repo, normalized, now),
         price=PriceOut(
             last=latest.close if latest else None,
             change_24h=change,
@@ -93,6 +102,29 @@ async def get_market(
         ),
         coverage=coverage,
         horizons=horizons,
+    )
+
+
+async def _derivatives(repo: Repository, symbol: str, now: datetime) -> DerivativesOut:
+    """Panel şeridi için türev özeti. Veri yoksa alanlar `None` kalır: sıfır yazılmaz."""
+    live = await repo.get_funding_live(symbol, start=now - timedelta(hours=2))
+    history = await repo.get_funding_rates(symbol, start=now - FUNDING_WINDOW)
+    open_interest = open_interest_summary(
+        await repo.get_open_interest(symbol, start=now - OI_WINDOW)
+    )
+    long_short = await repo.get_long_short(
+        symbol, kind="global_account", start=now - timedelta(hours=1)
+    )
+    flow = await repo.get_orderflow(symbol, start=now - timedelta(minutes=60))
+    last_rate = live[-1].last_rate if live else (history[-1].rate if history else None)
+    return DerivativesOut(
+        funding_rate=last_rate,
+        funding_zscore=funding_zscore(last_rate, history),
+        next_funding_time=live[-1].next_funding_time if live else None,
+        open_interest=open_interest.latest,
+        open_interest_change_24h=open_interest.change_24h,
+        long_short_ratio=long_short[-1].ratio if long_short else None,
+        orderflow_coverage=coverage_ratio(flow, 60) if flow else None,
     )
 
 

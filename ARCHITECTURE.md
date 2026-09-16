@@ -865,7 +865,7 @@ UTC; arayüz yerel saate çevirir. Hata gövdesi `{"error": {"code", "message"}}
 | GET | `/symbols` | — | Takip edilen semboller ve arayüz saat dilimi |
 | GET | `/market/{symbol}` | — | Son fiyat, 24s değişim, funding (anlık, z), OI (anlık, 24s Δ), L/S, F&G, volatilite rejimi, 4 ufuk için son tahmin özeti, veto/çelişki durumu, veri sağlığı |
 | GET | `/market/{symbol}/candles` | `interval, from?, to?, limit=1000` | lightweight-charts formatında mumlar |
-| GET | `/market/{symbol}/orderflow` | `from?, to?` | `orderflow_1m` + `liquidations` (panel verisi) |
+| GET | `/market/{symbol}/orderflow` | `minutes=240` (5..1440) | `orderflow_1m` serisi (kümülatif CVD, dengesizlik, derinlik), `liquidations`, funding (anlık + z), OI (anlık + 24s Δ), L/S, kapsama oranı |
 | GET | `/market/{symbol}/levels` | — | Son teknik S/R seviyeleri, POC/değer alanı, likidasyon kümeleri (grafik overlay) |
 | GET | `/signals/{symbol}` | `horizon` | Son `SignalResult` listesi (skor, güven, kapsama, bileşenler, gerekçe) |
 | GET | `/news` | `symbol?, impact_min?, impact_max?, category?, tier?, since?, limit=100, cursor?` | Grup başı haberler + Kademe 1 + varsa Kademe 2 + `tier_reached` + grup boyutu |
