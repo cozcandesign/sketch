@@ -17,6 +17,13 @@ export type ModelSummary = components['schemas']['ModelSummaryOut']
 export type HorizonSummary = components['schemas']['HorizonSummaryOut']
 export type SymbolsResponse = components['schemas']['SymbolsOut']
 export type Candles = components['schemas']['CandlesOut']
+export type Candle = components['schemas']['CandleOut']
+export type Signals = components['schemas']['SignalsOut']
+export type HorizonSignals = components['schemas']['HorizonSignalsOut']
+export type ModuleSignal = components['schemas']['SignalOut']
+export type Levels = components['schemas']['LevelsOut']
+export type Level = components['schemas']['LevelOut']
+export type VolumeProfile = components['schemas']['VolumeProfileOut']
 
 /** WebSocket `price.{symbol}` yükü (şemadan üretilmez: WS tipleri OpenAPI'de yok). */
 export interface LivePrice {
@@ -27,6 +34,10 @@ export interface LivePrice {
   ts?: string
   stale: boolean
 }
+
+/** Mum grafiğinde seçilebilen zaman dilimleri. */
+export const CHART_INTERVALS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
+export type IntervalKey = (typeof CHART_INTERVALS)[number]
 
 export const HORIZONS = ['30m', '1h', '4h', '24h'] as const
 export type HorizonKey = (typeof HORIZONS)[number]

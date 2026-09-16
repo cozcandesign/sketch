@@ -30,7 +30,7 @@ function renderAt(path: string) {
 describe('App shell', () => {
   it.each([
     ['/', 'Panel'],
-    ['/coin/BTCUSDT', 'Coin detay'],
+    ['/coin/BTCUSDT', 'BTCUSDT'],
     ['/news', 'Haber akışı'],
     ['/predictions', 'Tahmin geçmişi'],
     ['/calibration', 'Kalibrasyon'],

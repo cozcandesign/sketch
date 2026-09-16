@@ -145,7 +145,7 @@ Görevler
       iskeleti (motor Faz 7'de; şimdilik aynı fonksiyonun iki çağrısı).
 - [x] F2-8 API: `GET /signals/{symbol}`, `/market/{symbol}/levels`; `/market/{symbol}` canlı tahmin özetleri;
       outbox `signals.updated`.
-- [ ] F2-9 Frontend: Coin detay ekranı — `CandleChart` (lightweight-charts; interval seçici; EMA/S-R/POC
+- [x] F2-9 Frontend: Coin detay ekranı — `CandleChart` (lightweight-charts; interval seçici; EMA/S-R/POC
       overlay toggle; tahmin işaretçileri sonuç rengiyle), ufuk sekmeleri, `ModuleBreakdown` +
       `RationaleList`, `ReportCard` (headline, gerekçe, karşıt argüman, beklenen aralık). Dashboard kartları
       gerçek olasılık + `ConfidenceBadge` + çelişki/veto rozetleri.

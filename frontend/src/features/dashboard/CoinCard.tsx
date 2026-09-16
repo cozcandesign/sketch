@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { ProbabilityGauge } from '@/components/domain/ProbabilityGauge'
-import { confidenceLabelTr } from '@/components/domain/confidence'
+import { ConfidenceBadge } from '@/components/domain/ConfidenceBadge'
 import { shortModelLabel } from '@/features/predictions/modelLabel'
 import { useMarket } from '@/api/queries/market'
 import { useLivePrice } from '@/store/prices'
@@ -12,7 +12,10 @@ import { useNow } from '@/lib/useNow'
 import { tr } from '@/i18n/tr'
 import { HORIZON_LABELS, type HorizonKey, type HorizonState } from '@/api/types'
 
-/** Bir ufuk için her referans tahmincinin son tahmini. Hangi tahminci olduğu her zaman yazılı. */
+/**
+ * Bir ufkun özeti: canlı tahmin üstte ve vurgulu, referans tahminciler altında küçük.
+ * Referanslar gizlenmez — canlı modülün yenmesi gereken çizgi onlar (K26).
+ */
 function HorizonBlock({ state, now }: { state: HorizonState | undefined; now: Date }) {
   const horizon = (state?.horizon ?? '30m') as HorizonKey
   const latestPerModel = new Map<string, HorizonState['predictions'][number]>()
@@ -22,7 +25,9 @@ function HorizonBlock({ state, now }: { state: HorizonState | undefined; now: Da
     }
   }
   const predictions = [...latestPerModel.values()]
-  const newest = predictions[0]
+  const livePrediction = predictions.find((prediction) => prediction.source === 'live')
+  const baselines = predictions.filter((prediction) => prediction.source !== 'live')
+  const newest = livePrediction ?? predictions[0]
 
   return (
     <div className="flex flex-col gap-1 border-t border-border/60 pt-2">
@@ -36,21 +41,25 @@ function HorizonBlock({ state, now }: { state: HorizonState | undefined; now: Da
       </div>
       {predictions.length === 0 ? (
         <span className="text-xs text-muted">{tr.dashboard.waitingPredictions}</span>
-      ) : (
-        predictions.map((prediction) => (
-          <ProbabilityGauge
-            key={prediction.model_version}
-            pUp={prediction.p_up}
-            label={shortModelLabel(prediction.model_version)}
-            compact
-          />
-        ))
-      )}
-      {newest ? (
-        <span className="text-xs text-muted">
-          {tr.confidence.label}: {confidenceLabelTr(newest.confidence_label)}
-        </span>
       ) : null}
+      {livePrediction ? (
+        <>
+          <ProbabilityGauge pUp={livePrediction.p_up} label={tr.dashboard.live} />
+          <div className="flex flex-wrap items-center gap-1">
+            <ConfidenceBadge label={livePrediction.confidence_label} />
+            {livePrediction.conflict ? <Badge tone="warn">{tr.coin.conflict}</Badge> : null}
+            {livePrediction.veto_active ? <Badge tone="critical">{tr.coin.veto}</Badge> : null}
+          </div>
+        </>
+      ) : null}
+      {baselines.map((prediction) => (
+        <ProbabilityGauge
+          key={prediction.model_version}
+          pUp={prediction.p_up}
+          label={shortModelLabel(prediction.model_version)}
+          compact
+        />
+      ))}
     </div>
   )
 }

@@ -1,5 +1,13 @@
 import { vi } from 'vitest'
-import type { Calibration, HealthResponse, MarketState, PredictionPage } from '@/api/types'
+import type {
+  Calibration,
+  Candles,
+  HealthResponse,
+  Levels,
+  MarketState,
+  PredictionPage,
+  Signals,
+} from '@/api/types'
 
 /** URL parçasına göre yanıt döndüren sahte fetch. Testlerde ağ yok. */
 export function mockApi(routes: Record<string, unknown>): void {
@@ -87,7 +95,33 @@ export const marketState: MarketState = {
         },
       ],
     },
-    { horizon: '1h', label_tr: '1 saat', predictions: [] },
+    {
+      horizon: '1h',
+      label_tr: '1 saat',
+      predictions: [
+        {
+          id: 3,
+          symbol: 'BTCUSDT',
+          horizon: '1h',
+          as_of: '2026-01-01T11:30:00Z',
+          target_at: '2026-01-01T12:30:00Z',
+          price_at: 62_800,
+          p_up: 0.68,
+          expected_low: 62_000,
+          expected_high: 63_600,
+          confidence: 0.18,
+          confidence_label: 'low',
+          conflict: false,
+          veto_active: false,
+          veto_reason: null,
+          source: 'live',
+          model_version: 'ensemble-v0',
+          non_overlapping: true,
+          report: null,
+          outcome: null,
+        },
+      ],
+    },
     { horizon: '4h', label_tr: '4 saat', predictions: [] },
     { horizon: '24h', label_tr: '24 saat', predictions: [] },
   ],
@@ -185,4 +219,108 @@ export const calibration: Calibration = {
     { day: '2026-01-02', n: 6, brier: 0.16, hit_rate: 0.83 },
   ],
   pending: 3,
+}
+
+export const signals: Signals = {
+  symbol: 'BTCUSDT',
+  horizons: [
+    {
+      horizon: '30m',
+      label_tr: '30 dakika',
+      prediction_id: null,
+      as_of: null,
+      p_up: null,
+      combined_score: null,
+      confidence: null,
+      confidence_label: null,
+      conflict: false,
+      veto_active: false,
+      modules: [],
+      report: null,
+    },
+    {
+      horizon: '1h',
+      label_tr: '1 saat',
+      prediction_id: 3,
+      as_of: '2026-01-01T11:30:00Z',
+      p_up: 0.68,
+      combined_score: 0.38,
+      confidence: 0.18,
+      confidence_label: 'low',
+      conflict: false,
+      veto_active: false,
+      modules: [
+        {
+          module: 'technical',
+          score: 0.38,
+          confidence: 0.62,
+          coverage: 1,
+          components: { trend: 0.6, momentum: 0.2, volume: 0.1, sr: -0.2, vol_regime: 0.1 },
+          rationale: ['EMA dizilimi yukarı yönlü', 'RSI 58'],
+        },
+      ],
+      report: {
+        headline: 'BTC · 1 saat · Yukarı olasılığı %68 · Güven: düşük',
+        reasons: [{ module: 'technical', text: 'teknik: EMA dizilimi yukarı yönlü', weight: 1 }],
+        counter_argument: 'Beni yanıltacak şey: destek/direnç tahminin tersine işaret ediyor.',
+        expected_range: { low: 62_000, high: 63_600 },
+        confidence: { value: 0.18, label: 'low' },
+        data_coverage: { technical: 1 },
+        missing: ['orderflow', 'news', 'macro', 'sentiment'],
+      },
+    },
+    {
+      horizon: '4h',
+      label_tr: '4 saat',
+      prediction_id: null,
+      as_of: null,
+      p_up: null,
+      combined_score: null,
+      confidence: null,
+      confidence_label: null,
+      conflict: false,
+      veto_active: false,
+      modules: [],
+      report: null,
+    },
+    {
+      horizon: '24h',
+      label_tr: '24 saat',
+      prediction_id: null,
+      as_of: null,
+      p_up: null,
+      combined_score: null,
+      confidence: null,
+      confidence_label: null,
+      conflict: false,
+      veto_active: false,
+      modules: [],
+      report: null,
+    },
+  ],
+}
+
+export const levels: Levels = {
+  symbol: 'BTCUSDT',
+  interval: '15m',
+  price: 63_000,
+  atr: 180,
+  levels: [
+    { price: 62_400, kind: 'low', touches: 3, distance_atr: 0.9 },
+    { price: 63_500, kind: 'high', touches: 2, distance_atr: 1.4 },
+  ],
+  volume_profile: { poc: 62_900, value_area_low: 62_300, value_area_high: 63_400 },
+}
+
+export const candles: Candles = {
+  symbol: 'BTCUSDT',
+  interval: '15m',
+  candles: Array.from({ length: 30 }, (_, index) => ({
+    time: 1_767_225_600 + index * 900,
+    open: 62_000 + index * 10,
+    high: 62_100 + index * 10,
+    low: 61_900 + index * 10,
+    close: 62_050 + index * 10,
+    volume: 120 + index,
+  })),
 }

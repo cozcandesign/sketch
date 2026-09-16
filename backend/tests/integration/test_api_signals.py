@@ -129,10 +129,11 @@ def test_levels_endpoint_returns_mechanical_levels_and_a_volume_profile(
     assert body["price"] > 0
     assert body["atr"] > 0
     assert body["levels"]
+    distances = [level["distance_atr"] for level in body["levels"]]
+    assert distances == sorted(distances)  # en yakın seviye başta
     for level in body["levels"]:
         assert level["kind"] in {"high", "low"}
         assert level["touches"] >= 1
-        assert level["distance_atr"] <= 3.0
     profile = body["volume_profile"]
     assert profile["value_area_low"] <= profile["poc"] <= profile["value_area_high"]
 

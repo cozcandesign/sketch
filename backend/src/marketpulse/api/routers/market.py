@@ -27,7 +27,7 @@ PRICE_INTERVAL = Interval.M1
 PRICE_STALE_AFTER = timedelta(minutes=3)
 COVERAGE_INTERVALS = (Interval.M1, Interval.M5, Interval.M15, Interval.H1, Interval.H4, Interval.D1)
 MAX_CANDLES = 2000
-PREDICTIONS_PER_HORIZON = 4
+PREDICTIONS_PER_HORIZON = 6  # canlı + iki referans, iki tur
 
 
 def _check_symbol(symbol: str, settings: Settings) -> str:

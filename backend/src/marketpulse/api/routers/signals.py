@@ -34,7 +34,7 @@ router = APIRouter(tags=["signals"])
 
 LEVELS_LOOKBACK = 400  # swing taraması için yeterli, sorgu hâlâ hızlı
 ATR_PERIOD = 14
-NEAR_ATR = 3.0  # fiyattan 3 ATR'den uzak seviyeler grafikte gürültüdür
+MAX_LEVELS = 12  # en yakın 12 seviye; gerisi tabloda da gürültü olur
 
 
 def _check_symbol(symbol: str, settings: Settings) -> str:
@@ -138,24 +138,26 @@ async def get_levels(
 
 
 def _levels(frame: pd.DataFrame, price: float, atr_value: float | None) -> list[LevelOut]:
+    """Fiyata en yakın seviyeler, uzaklık sırasıyla.
+
+    Uzaklığa göre kesme yapılmaz: fiyat yeni bir zirveye kırdığında tüm onaylı seviyeler geride
+    kalır ve "seviye yok" demek yanıltıcı olurdu. Uzaklık ATR cinsinden verilir; ne kadar uzak
+    olduğuna kullanıcı bakar, grafik yalnızca yakındakileri çizer.
+    """
     if atr_value is None or atr_value <= 0:
         return []
     points = lv.swing_points(frame)
     clustered = lv.cluster_levels(points, tolerance=0.5 * atr_value)
-    out: list[LevelOut] = []
-    for level in clustered:
-        distance = abs(level.price - price) / atr_value
-        if distance > NEAR_ATR:
-            continue
-        out.append(
-            LevelOut(
-                price=level.price,
-                kind=level.kind,
-                touches=level.touches,
-                distance_atr=round(distance, 2),
-            )
+    nearest = sorted(clustered, key=lambda level: abs(level.price - price))[:MAX_LEVELS]
+    return [
+        LevelOut(
+            price=level.price,
+            kind=level.kind,
+            touches=level.touches,
+            distance_atr=round(abs(level.price - price) / atr_value, 2),
         )
-    return out
+        for level in nearest
+    ]
 
 
 def _profile(frame: pd.DataFrame) -> VolumeProfileOut | None:

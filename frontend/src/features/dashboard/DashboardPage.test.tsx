@@ -33,8 +33,11 @@ describe('DashboardPage', () => {
     expect(screen.getByText('30 dk')).toBeInTheDocument()
   })
 
-  it('says that only reference predictors are running', async () => {
+  it('shows the live prediction next to the reference predictors', async () => {
     renderPage()
-    expect(await screen.findByText(/referans tahminciler/i)).toBeInTheDocument()
+    expect(await screen.findByText(/referans tahminci/i)).toBeInTheDocument()
+    // 1 saat ufkunda canlı tahmin var: hem canlı etiketi hem güven rozeti görünmeli.
+    expect(await screen.findByText('canlı tahmin')).toBeInTheDocument()
+    expect(await screen.findByText(/güven düşük/i)).toBeInTheDocument()
   })
 })
