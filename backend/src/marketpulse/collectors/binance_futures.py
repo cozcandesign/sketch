@@ -9,6 +9,7 @@ yapılacaktır; gerçek yanıt farklı çıkarsa ARCHITECTURE §4 tablosu ve bur
 commit'te güncellenir (CLAUDE.md §12.5).
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final, Literal
 
@@ -30,10 +31,12 @@ GLOBAL_LONG_SHORT_PATH: Final = "/futures/data/globalLongShortAccountRatio"
 TOP_ACCOUNT_PATH: Final = "/futures/data/topLongShortAccountRatio"
 TOP_POSITION_PATH: Final = "/futures/data/topLongShortPositionRatio"
 TAKER_VOLUME_PATH: Final = "/futures/data/takerlongshortRatio"
+DEPTH_PATH: Final = "/fapi/v1/depth"
 
 # `/futures/data/*` uçları en fazla 500 satır ve yalnızca son 30 gün verir (K5).
 MAX_DATA_LIMIT: Final = 500
 MAX_FUNDING_LIMIT: Final = 1000
+DEPTH_LIMIT: Final = 500
 DEFAULT_PERIOD: Final = "5m"
 
 LongShortKind = Literal["global_account", "top_account", "top_position"]
@@ -47,6 +50,21 @@ LONG_SHORT_PATHS: Final[dict[LongShortKind, str]] = {
     "top_account": TOP_ACCOUNT_PATH,
     "top_position": TOP_POSITION_PATH,
 }
+
+
+@dataclass(frozen=True)
+class DepthSnapshot:
+    """Ham order book anlık görüntüsü; yalnızca bellekte yaşar."""
+
+    symbol: str
+    bids: list[tuple[float, float]]  # (fiyat, miktar), en iyi alış başta
+    asks: list[tuple[float, float]]  # (fiyat, miktar), en iyi satış başta
+
+    @property
+    def mid_price(self) -> float | None:
+        if not self.bids or not self.asks:
+            return None
+        return (self.bids[0][0] + self.asks[0][0]) / 2.0
 
 
 class FuturesClient:
@@ -137,6 +155,15 @@ class FuturesClient:
             for row in rows
         ]
 
+    async def depth(self, symbol: str, *, limit: int = DEPTH_LIMIT) -> "DepthSnapshot":
+        """Order book anlık görüntüsü. Ham derinlik saklanmaz; özet çıkarılır (K21)."""
+        payload = await self._client.get(DEPTH_PATH, {"symbol": symbol, "limit": limit})
+        return DepthSnapshot(
+            symbol=symbol,
+            bids=_levels(payload.get("bids", [])),
+            asks=_levels(payload.get("asks", [])),
+        )
+
     async def taker_volume(
         self, symbol: str, *, period: str = DEFAULT_PERIOD, limit: int = MAX_DATA_LIMIT
     ) -> list[TakerVolumePoint]:
@@ -154,6 +181,10 @@ class FuturesClient:
             )
             for row in rows
         ]
+
+
+def _levels(raw: Any) -> list[tuple[float, float]]:
+    return [(float(price), float(qty)) for price, qty in raw]
 
 
 def _optional_float(value: Any) -> float | None:

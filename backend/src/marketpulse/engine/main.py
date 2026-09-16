@@ -16,6 +16,7 @@ from loguru import logger
 from marketpulse import __version__
 from marketpulse.collectors.binance_client import BinanceClient
 from marketpulse.collectors.binance_futures import FuturesClient
+from marketpulse.collectors.depth_snapshot import DepthSnapshotCollector
 from marketpulse.collectors.futures import (
     FundingCollector,
     LongShortCollector,
@@ -82,6 +83,7 @@ class DerivativeCollectors:
     open_interest: OpenInterestCollector
     long_short: LongShortCollector
     taker_volume: TakerVolumeCollector
+    depth: DepthSnapshotCollector
 
     @property
     def names(self) -> tuple[str, ...]:
@@ -90,6 +92,7 @@ class DerivativeCollectors:
             self.open_interest.name,
             self.long_short.name,
             self.taker_volume.name,
+            self.depth.name,
         )
 
 
@@ -102,6 +105,7 @@ def build_derivative_collectors(
         open_interest=OpenInterestCollector(futures, repo, clock, symbols=symbols),
         long_short=LongShortCollector(futures, repo, symbols=symbols),
         taker_volume=TakerVolumeCollector(futures, repo, symbols=symbols),
+        depth=DepthSnapshotCollector(futures, repo, clock, symbols=symbols),
     )
 
 
@@ -206,6 +210,11 @@ def build_jobs(
             timedelta(minutes=5),
             collector_job(derivatives.taker_volume.name, derivatives.taker_volume.poll),
             offset=timedelta(seconds=50),
+        ),
+        Job(
+            "depth_snapshot",
+            timedelta(seconds=30),
+            collector_job(derivatives.depth.name, derivatives.depth.poll),
         ),
         Job(
             "open_interest_hist",

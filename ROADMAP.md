@@ -185,7 +185,7 @@ Görevler
       + testleri; `make backfill`'e funding ve 30 günlük OI/LS/taker eklenir.
 - [x] F3-2 `collectors/binance_ws` futures akışları: `aggTrade`, `forceOrder`, `depth20@100ms`; 1 dk kova
       toplayıcı (`orderflow_1m`), `coverage_seconds`, `liquidations` ham kayıt; kapanışta flush + testleri.
-- [ ] F3-3 `collectors/depth_snapshot` (REST 500 seviye, ±%1 derinlik) + testi.
+- [x] F3-3 `collectors/depth_snapshot` (REST 500 seviye, ±%1 derinlik) + testi.
 - [ ] F3-4 `FeatureStore`: funding, OI, LS, taker, orderflow_1m, liquidations veri setleri; kesme ve kapsama
       + `truncation_invariance` genişletme.
 - [ ] F3-5 `signals/orderflow.py`: funding_dev, oi_price (4 durum), liquidations, book_imbalance, cvd +
