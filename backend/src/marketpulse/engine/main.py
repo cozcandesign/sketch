@@ -203,6 +203,9 @@ async def run(
             heartbeat_interval_sec=settings.heartbeat_interval_sec,
         )
 
+        for job in jobs:
+            health.register(job.name, expected_interval=job.every)
+
         tasks = [
             asyncio.create_task(
                 supervise("jobs", lambda: run_jobs(jobs, stop, clock, health), stop, health),

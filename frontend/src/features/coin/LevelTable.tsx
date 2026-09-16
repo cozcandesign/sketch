@@ -3,12 +3,19 @@ import { formatPrice, formatScore } from '@/lib/format'
 import type { Levels } from '@/api/types'
 import { tr } from '@/i18n/tr'
 
-/** Mekanik seviyeler: kaç kez dokunulmuş ve fiyattan kaç ATR uzakta. */
+/**
+ * Mekanik seviyeler: kaç kez dokunulmuş ve fiyattan kaç ATR uzakta.
+ *
+ * Tür, seviyenin **şu anki fiyata göre** konumundan gelir: fiyatın altındaki destek, üstündeki
+ * dirençtir. Seviyenin geçmişte swing low mu high mı olduğu değil — fiyat bir desteğin üstüne
+ * çıkınca o seviye artık destektir, altına inince dirence döner.
+ */
 export function LevelTable({ levels }: { levels: Levels | null }) {
   if (!levels || levels.levels.length === 0) {
     return <p className="text-sm text-muted">{tr.coin.noLevels}</p>
   }
   const profile = levels.volume_profile
+  const price = levels.price ?? 0
   return (
     <div className="flex flex-col gap-2">
       {profile ? (
@@ -33,8 +40,8 @@ export function LevelTable({ levels }: { levels: Levels | null }) {
           {levels.levels.map((level) => (
             <Tr key={`${level.kind}-${level.price}`}>
               <Td>
-                <span className={level.kind === 'high' ? 'text-down' : 'text-up'}>
-                  {level.kind === 'high' ? tr.coin.resistance : tr.coin.support}
+                <span className={level.price > price ? 'text-down' : 'text-up'}>
+                  {level.price > price ? tr.coin.resistance : tr.coin.support}
                 </span>
               </Td>
               <Td align="right" mono>

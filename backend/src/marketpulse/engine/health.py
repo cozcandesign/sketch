@@ -16,6 +16,10 @@ from marketpulse.storage.repository import Repository
 DEGRADED_AFTER = timedelta(minutes=10)
 DOWN_AFTER = timedelta(hours=1)
 DOWN_AFTER_FAILURES_WITHOUT_SUCCESS = 3
+# Periyodu bilinen işler için eşikler kendi periyoduna göre ölçeklenir: 4 saatte bir çalışan bir iş
+# sabit 1 saatlik eşikle saatlerce "kopuk" görünürdü. Yanlış alarm, şeridin güvenilirliğini bitirir.
+DEGRADED_AFTER_PERIODS = 1.5
+DOWN_AFTER_PERIODS = 3.0
 
 
 @dataclass
@@ -26,6 +30,7 @@ class _Entry:
     consecutive_failures: int = 0
     forced_status: HealthStatus | None = None
     known_failures: list[str] = field(default_factory=list)
+    expected_interval: timedelta | None = None  # None = sürekli çalışan collector
 
 
 class HealthRegistry:
@@ -44,10 +49,19 @@ class HealthRegistry:
         self._entries: dict[str, _Entry] = {}
         self._last_flushed: dict[str, HealthStatus] = {}
 
-    def register(self, name: str, *, status: HealthStatus | None = None) -> None:
+    def register(
+        self,
+        name: str,
+        *,
+        status: HealthStatus | None = None,
+        expected_interval: timedelta | None = None,
+    ) -> None:
+        """Kaydı açar. `expected_interval` verilirse eşikler o periyoda göre ölçeklenir."""
         entry = self._entries.setdefault(name, _Entry())
         if status is not None:
             entry.forced_status = status
+        if expected_interval is not None:
+            entry.expected_interval = expected_interval
 
     def record_success(self, name: str) -> None:
         entry = self._entries.setdefault(name, _Entry())
@@ -74,11 +88,21 @@ class HealthRegistry:
                 return "down"
             return "degraded" if entry.consecutive_failures > 0 else "ok"
         age = now - entry.last_success_at
-        if age < self._degraded_after:
+        degraded_after, down_after = self._thresholds(entry)
+        if age < degraded_after:
             return "ok"
-        if age < self._down_after:
+        if age < down_after:
             return "degraded"
         return "down"
+
+    def _thresholds(self, entry: _Entry) -> tuple[timedelta, timedelta]:
+        """Periyodu bilinen iş kendi ritmine göre ölçülür; bilinmeyen sabit eşiklerle."""
+        if entry.expected_interval is None:
+            return self._degraded_after, self._down_after
+        return (
+            max(self._degraded_after, entry.expected_interval * DEGRADED_AFTER_PERIODS),
+            max(self._down_after, entry.expected_interval * DOWN_AFTER_PERIODS),
+        )
 
     def snapshot(self) -> list[CollectorHealth]:
         return [
@@ -96,8 +120,8 @@ class HealthRegistry:
     async def flush(self, repo: Repository, outbox: Outbox | None = None) -> list[CollectorHealth]:
         """Tüm kayıtları DB'ye yazar; durum değişenler için `health.changed` yayınlar."""
         rows = self.snapshot()
+        await repo.upsert_collector_health_many(rows)
         for row in rows:
-            await repo.upsert_collector_health(row)
             previous = self._last_flushed.get(row.collector)
             if previous != row.status:
                 self._last_flushed[row.collector] = row.status

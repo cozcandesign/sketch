@@ -16,7 +16,7 @@ import {
 
 afterEach(() => vi.unstubAllGlobals())
 
-function renderCoin() {
+function renderCoin(path = '/coin/BTCUSDT') {
   mockApi({
     '/health': health,
     '/symbols': { symbols: ['BTCUSDT'], timezone: 'Europe/Istanbul' },
@@ -27,7 +27,7 @@ function renderCoin() {
     '/market/BTCUSDT': marketState,
   })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const router = createMemoryRouter(routes, { initialEntries: ['/coin/BTCUSDT'] })
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
   render(
     <Providers live={false} client={client}>
       <RouterProvider router={router} />
@@ -68,5 +68,21 @@ describe('Coin detay ekranı', () => {
     expect(await screen.findByText(/en çok işlem gören fiyat/)).toBeInTheDocument()
     expect(screen.getByText('direnç')).toBeInTheDocument()
     expect(screen.getByText('destek')).toBeInTheDocument()
+  })
+
+  it('seviyeyi geçmişine göre değil, fiyata göre adlandırır', async () => {
+    // 62.400 swing LOW'dur ama fiyat (63.000) üstündeyse bugün destektir; 63.500 dirençtir.
+    renderCoin()
+    const rows = await screen.findAllByRole('row')
+    const low = rows.find((row) => row.textContent?.includes('62.400'))
+    const high = rows.find((row) => row.textContent?.includes('63.500'))
+    expect(low?.textContent).toContain('destek')
+    expect(high?.textContent).toContain('direnç')
+  })
+
+  it('sembolsüz açılınca ilk coine yönlendirir', async () => {
+    renderCoin('/coin')
+    // Yönlendirme sonrası BTCUSDT ekranı gelir: rapor başlığı görünür.
+    expect(await screen.findByText(/Yukarı olasılığı %68/)).toBeInTheDocument()
   })
 })

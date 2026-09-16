@@ -144,6 +144,7 @@ export const tr = {
   },
   coin: {
     chart: 'Fiyat grafiği',
+    symbol: 'coin',
     interval: 'zaman dilimi',
     overlays: { ema: 'EMA20', levels: 'destek/direnç', profile: 'hacim profili' },
     horizonTabs: 'ufuk',

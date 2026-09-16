@@ -14,7 +14,8 @@ export function DataStatusStrip() {
 
   return (
     <div
-      className="flex h-row items-center gap-3 overflow-x-auto border-b border-border bg-surface-2 px-3 text-xs whitespace-nowrap"
+      // Kaydırma yerine satır kaydırma: ekrana sığmayan bir "kopuk" uyarısı görünmez olurdu (K22).
+      className="flex min-h-row flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border bg-surface-2 px-3 py-0.5 text-xs"
       role="status"
       aria-label="Veri durumu"
     >
@@ -59,13 +60,18 @@ export function DataStatusStrip() {
       {data?.collectors.map((c) => (
         <span
           key={c.collector}
-          className="flex items-center gap-1.5"
+          className="flex items-center gap-1.5 whitespace-nowrap"
           title={c.last_error ?? undefined}
         >
           <DataHealthDot status={c.status} />
           <span>{c.collector}</span>
           <span className="text-muted">{healthLabel(c.status)}</span>
           <span className="num text-muted">{relativeTime(c.last_success_at, now, labels)}</span>
+          {c.status === 'down' && c.last_error ? (
+            <span className="max-w-64 truncate text-critical" title={c.last_error}>
+              {c.last_error}
+            </span>
+          ) : null}
         </span>
       ))}
     </div>

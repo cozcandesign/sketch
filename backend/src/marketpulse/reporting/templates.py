@@ -33,10 +33,10 @@ TEMPLATES: Final[dict[str, str]] = {
     "volume_above_value": "Fiyat hacim değer alanının üstünde (POC {poc})",
     "volume_below_value": "Fiyat hacim değer alanının altında (POC {poc})",
     "volume_inside_value": "Fiyat hacim değer alanının içinde (POC {poc}): denge bölgesi",
-    "sr_resistance_near": (
-        "Fiyat {distance} ATR altındaki {touches} dokunuşlu dirence yakın ({level})"
-    ),
-    "sr_support_near": "Fiyat {distance} ATR üstündeki {touches} dokunuşlu desteğe yakın ({level})",
+    # "Fiyat 0.4 ATR altındaki dirence yakın" iki yöne de okunabiliyordu; seviyenin nerede
+    # olduğunu doğrudan söylüyoruz.
+    "sr_resistance_near": "Direnç {distance} ATR yukarıda: {level} ({touches} dokunuş)",
+    "sr_support_near": "Destek {distance} ATR aşağıda: {level} ({touches} dokunuş)",
     "sr_clear": "En yakın destek ve direnç 1 ATR'den uzak: seviye baskısı yok",
     "vol_squeeze": "Volatilite sıkışması (ATR yüzdelik {pct}): kırılım riski var, yön belirsiz",
     "vol_expansion": "Volatilite genişlemesi (ATR yüzdelik {pct}): hareket aralığı geniş",

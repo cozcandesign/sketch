@@ -1,5 +1,6 @@
 """İşletim tabloları: heartbeat, collector sağlığı, outbox, ayarlar, DB boyutu."""
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -52,6 +53,25 @@ class OpsMixin(SqliteBase):
         )
         async with self._engine.begin() as conn:
             await conn.execute(stmt)
+
+    async def upsert_collector_health_many(self, rows: Sequence[CollectorHealth]) -> None:
+        """Tüm sağlık satırlarını **tek işlemde** yazar.
+
+        Tek tek yazıldığında okuyucu (API) yarım bir anlık görüntü görebiliyordu: veri durumu
+        şeridinde collector'ların bir kısmı görünüp bir kısmı görünmüyordu.
+        """
+        if not rows:
+            return
+        async with self._engine.begin() as conn:
+            for health in rows:
+                values = health.model_dump()
+                stmt = sqlite_insert(t.collector_health).values(**values)
+                update_cols = {k: v for k, v in values.items() if k != "collector"}
+                await conn.execute(
+                    stmt.on_conflict_do_update(
+                        index_elements=[t.collector_health.c.collector], set_=update_cols
+                    )
+                )
 
     async def list_collector_health(self) -> list[CollectorHealth]:
         stmt = select(t.collector_health).order_by(t.collector_health.c.collector)

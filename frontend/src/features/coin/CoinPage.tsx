@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { PageFrame } from '@/components/ui/PageFrame'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -11,7 +11,7 @@ import { ReportCard } from '@/components/domain/ReportCard'
 import { HorizonTabs } from '@/features/coin/HorizonTabs'
 import { LevelTable } from '@/features/coin/LevelTable'
 import { OverlayToggles, type Overlays } from '@/features/coin/OverlayToggles'
-import { useCandles, useMarket } from '@/api/queries/market'
+import { useCandles, useMarket, useSymbols } from '@/api/queries/market'
 import { useSignals, useLevels } from '@/api/queries/signals'
 import { usePredictions } from '@/api/queries/predictions'
 import { useLivePrice } from '@/store/prices'
@@ -28,10 +28,30 @@ import { tr } from '@/i18n/tr'
 const CANDLE_LIMIT = 400
 
 export function CoinPage() {
-  const { symbol = '' } = useParams()
+  const { symbol } = useParams()
+  const symbols = useSymbols()
+
+  // Kenar çubuğundaki "Coin detay" bağlantısı sembolsüzdür; ilk takip edilen coine yönlendirilir.
+  if (!symbol) {
+    const first = symbols.data?.symbols[0]
+    if (first) return <Navigate to={`/coin/${first}`} replace />
+    return (
+      <PageFrame title={tr.nav.coin}>
+        <Card>
+          <p className="text-sm text-muted">{tr.common.loading}</p>
+        </Card>
+      </PageFrame>
+    )
+  }
+  return <CoinDetail symbol={symbol} />
+}
+
+function CoinDetail({ symbol }: { symbol: string }) {
+  const symbols = useSymbols()
   const [interval, setInterval] = useState<IntervalKey>('15m')
   const [horizon, setHorizon] = useState<HorizonKey>('1h')
   const [overlays, setOverlays] = useState<Overlays>({ ema: true, levels: true, profile: true })
+  const navigate = useNavigate()
 
   const market = useMarket(symbol)
   const candles = useCandles(symbol, interval, CANDLE_LIMIT)
@@ -67,6 +87,15 @@ export function CoinPage() {
           {market.data?.price.stale ? <Badge tone="warn">{tr.dashboard.stale}</Badge> : null}
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Select
+            label={tr.coin.symbol}
+            value={symbol}
+            options={(symbols.data?.symbols ?? [symbol]).map((value) => ({
+              value,
+              label: value,
+            }))}
+            onChange={(value) => navigate(`/coin/${value}`)}
+          />
           <Select
             label={tr.coin.interval}
             value={interval}
@@ -124,7 +153,7 @@ export function CoinPage() {
         </Card>
       </div>
 
-      <Card title={tr.coin.levelsTitle}>
+      <Card title={`${tr.coin.levelsTitle} · ${interval}`}>
         <LevelTable levels={levels.data ?? null} />
       </Card>
     </PageFrame>
