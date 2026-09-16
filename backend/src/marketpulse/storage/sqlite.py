@@ -6,7 +6,8 @@ Bölünme yalnızca dosya boyutu içindir; dışarıya tek sınıf görünür.
 from marketpulse.storage.sqlite_candles import CandlesMixin
 from marketpulse.storage.sqlite_ledger import LedgerMixin
 from marketpulse.storage.sqlite_ops import OpsMixin
+from marketpulse.storage.sqlite_weights import WeightsMixin
 
 
-class SqliteRepository(OpsMixin, CandlesMixin, LedgerMixin):
+class SqliteRepository(OpsMixin, CandlesMixin, LedgerMixin, WeightsMixin):
     """`Repository` protokolünün SQLite gerçekleştirimi."""

@@ -3,7 +3,7 @@
 TimescaleDB geçişi yeni bir implementasyonla yapılır (ARCHITECTURE.md §20).
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
@@ -96,6 +96,17 @@ class Repository(Protocol):
         source: str | None = None,
         since: datetime | None = None,
     ) -> list[ResolvedRow]: ...
+
+    # --- ağırlıklar ---
+    async def get_weights(self, horizon: Horizon) -> dict[str, float]: ...
+    async def count_weights(self) -> int: ...
+    async def seed_weights(
+        self,
+        table: Mapping[Horizon, Mapping[str, float]],
+        *,
+        valid_from: datetime,
+        source: str = "default",
+    ) -> int: ...
 
     # --- meta ---
     async def db_size_bytes(self) -> int | None: ...

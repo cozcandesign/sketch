@@ -587,12 +587,15 @@ standart sapma `> 0.45` ise `conflict = True`. Sonuç: `p_up` 0.5'e doğru %30 �
 ```
 agreement  = 1 − ağırlıklı_std(score_i)            # modül uyumu
 coverage   = Σ w_i × coverage_i / Σ w_i            # veri kapsamı
-freshness  = Σ w_i × max(0, 1 − freshness_i) / Σ w_i   # veri tazeliği (bayat veri → düşer)
 track      = Σ w_i × skill_i / Σ w_i               # skill_i: module_calibration.hit_rate − 0.5 → [0.5, 1.0]; veri yoksa 0.75
 regime     = 1 − 0.5 × (ATR yüzdelik > 0.9)        # aşırı volatilitede düşür
 calendar   = 1 − 0.3 × (24 saat içinde importance-3 olay)
-confidence = agreement^0.5 × coverage × freshness × track × regime × calendar
+confidence = agreement^0.5 × coverage × track × regime × calendar
 ```
+
+Tazelik ayrı çarpan değildir: her modül bayat veriyi kendi `confidence`'ına yansıtır ve bu
+`e_i = w_i × c_i` üzerinden ensemble'a taşınır. Burada ikinci kez çarpmak aynı cezayı iki kez
+uygulamak olurdu.
 
 Etiket: `< 0.35 → low`, `< 0.6 → mid`, aksi `high`. Çelişki veya veto varsa etiket en fazla `low`.
 

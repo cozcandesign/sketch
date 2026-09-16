@@ -1,0 +1,34 @@
+# Ufuk bazlı varsayılan modül ağırlıkları (ARCHITECTURE.md §9.1).
+#
+# Bu dosya yalnızca BAŞLANGIÇ değerleridir. Canlı ağırlıklar `weights` tablosundan okunur; tablo
+# boşsa buradaki değerlerle tohumlanır. Ağırlık değişikliği K3 gereği otomatik yapılmaz: sistem
+# öneri üretir, kullanıcı arayüzden onaylar.
+#
+# Faz 2'de yalnızca `technical` modülü veri üretir; diğerleri coverage=0 döner ve ağırlıkları
+# çalışan modüllere yeniden dağıtılır (ARCHITECTURE.md §9.2). Yani bugün technical fiilen 1.0'dır.
+version: 1
+horizons:
+  30m:
+    technical: 0.25
+    orderflow: 0.45
+    news: 0.10
+    macro: 0.05
+    sentiment: 0.15
+  1h:
+    technical: 0.30
+    orderflow: 0.35
+    news: 0.15
+    macro: 0.05
+    sentiment: 0.15
+  4h:
+    technical: 0.30
+    orderflow: 0.20
+    news: 0.20
+    macro: 0.15
+    sentiment: 0.15
+  24h:
+    technical: 0.20
+    orderflow: 0.10
+    news: 0.30
+    macro: 0.25
+    sentiment: 0.15
