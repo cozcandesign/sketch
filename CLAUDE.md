@@ -122,7 +122,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 │   │   ├── core/                 # tipler (Horizon, Symbol), Clock, zaman yardımcıları, hatalar
 │   │   ├── storage/              # tablolar, repository arayüzü, sqlite implementasyonu, outbox
 │   │   ├── collectors/           # binance_spot, binance_futures, binance_ws, rss, cryptopanic, feargreed, macro, calendar
-│   │   ├── features/             # indicators.py (kendi impl), feature_store.py (point-in-time snapshot)
+│   │   ├── features/             # indicators.py, levels.py (S/R + hacim profili), feature_store.py
 │   │   ├── signals/              # base.py, technical.py, orderflow.py, news.py, macro.py, sentiment.py
 │   │   ├── ensemble/             # combine.py, confidence.py, veto.py, expected_range.py, conflict.py
 │   │   ├── reporting/            # templates.py, counter_argument.py, banned_words.py

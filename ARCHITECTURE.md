@@ -127,7 +127,7 @@ Kök: `backend/src/marketpulse/`
 | `core` | `Horizon` enum (`H30M, H1H, H4H, H24H`), `Symbol`, `Clock`/`FakeClock`, `utc_now`, `floor_to_minute`, hata sınıfları | — |
 | `storage` | SQLAlchemy Core tablo tanımları, `Repository` protokolü, `SqliteRepository`, `Outbox`, bağlantı yönetimi | config, core |
 | `collectors` | Her kaynak için bir `Collector`: `run()` (sonsuz döngü, kendi backoff'u), `backfill()`, `health()` | storage, engine.ratelimit, llm |
-| `features` | `indicators.py` (EMA, SMA, RSI, MACD, ATR, Bollinger, ADX, VWAP, swing high/low, volume profile), `feature_store.py` | storage |
+| `features` | `indicators.py` (EMA, SMA, RSI, MACD, ATR, Bollinger, ADX, yüzdelik sıra), `levels.py` (swing high/low, seviye kümeleme, hacim profili), `feature_store.py` | storage |
 | `signals` | `base.py` (`SignalResult`, `SignalModule`), beş modül | features, core |
 | `ensemble` | `combine.py`, `confidence.py`, `conflict.py`, `veto.py`, `expected_range.py` | signals |
 | `reporting` | `templates.py`, `counter_argument.py`, `banned_words.py`, `build_report()` | ensemble |

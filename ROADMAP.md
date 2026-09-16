@@ -128,7 +128,7 @@ Faz 1 durum notu (geliştirme ortamında doğrulandı)
 detay ekranı mum grafiği ve modül kırılımıyla açılıyor.
 
 Görevler
-- [ ] F2-1 `features/indicators.py`: EMA, SMA, RSI, MACD, ATR, Bollinger, ADX, swing high/low, volume profile
+- [x] F2-1 `features/indicators.py` (+ `features/levels.py`): EMA, SMA, RSI, MACD, ATR, Bollinger, ADX, swing high/low, volume profile
       (POC, değer alanı); her biri referans değer testi; `hypothesis` nedensellik testi (gelecek perturbasyonu).
 - [ ] F2-2 `features/feature_store.py`: `FeatureSnapshot`, candles için kesme kuralı, geriye bakış pencereleri,
       `coverage` hesabı + testleri; `test_truncation_invariance` tüm candles interval'larına genişletilir.
