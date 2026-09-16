@@ -24,6 +24,7 @@ from marketpulse.collectors.futures import (
 )
 from marketpulse.collectors.klines import KlinesCollector
 from marketpulse.collectors.klines_ws import KlinesWsCollector
+from marketpulse.collectors.orderflow_ws import OrderflowWsCollector
 from marketpulse.collectors.ws_stream import ConnectFactory, binance_connect
 from marketpulse.config import Settings, load_settings
 from marketpulse.core.clock import Clock, SystemClock
@@ -236,6 +237,68 @@ async def _startup_tasks(
         logger.bind(collector=klines.name).warning("açılış görevleri başarısız: {e}", e=repr(exc))
 
 
+@dataclass(frozen=True)
+class EngineRuntime:
+    """Engine'in çalışma parçaları. `run()` okunur kalsın diye ayrı kurulur."""
+
+    health: HealthRegistry
+    klines: KlinesCollector
+    klines_ws: KlinesWsCollector
+    orderflow_ws: OrderflowWsCollector
+    jobs: list[Job]
+
+
+async def build_runtime(
+    settings: Settings,
+    repo: SqliteRepository,
+    clock: Clock,
+    *,
+    connect: ConnectFactory,
+    client: BinanceClient,
+    futures_client: BinanceClient,
+) -> EngineRuntime:
+    """Collector'ları, tahmin yolunu ve iş listesini kurar; sağlık kayıtlarını açar."""
+    health = HealthRegistry(clock)
+    outbox = Outbox(repo, clock)
+    symbols = list(settings.symbols)
+    klines = KlinesCollector(client, repo, clock, symbols=symbols, intervals=CANDLE_INTERVALS)
+    klines_ws = KlinesWsCollector(
+        settings.binance_ws_spot, repo, clock, health, symbols=symbols, connect=connect
+    )
+    orderflow_ws = OrderflowWsCollector(
+        settings.binance_ws_futures, repo, clock, health, symbols=symbols, connect=connect
+    )
+    derivatives = build_derivative_collectors(futures_client, repo, clock, symbols)
+    for name in (klines.name, klines_ws.name, orderflow_ws.name, *derivatives.names):
+        health.register(name)
+
+    ledger = Ledger(repo, clock, outbox)
+    resolver = Resolver(repo, clock, outbox, backfill=klines)
+    # Ağırlıklar yalnızca tablo boşken tohumlanır; K3 gereği üzerine yazılmaz.
+    seeded = await repo.seed_weights(load_default_weights(), valid_from=clock.now())
+    if seeded:
+        logger.bind(process="engine").info("varsayılan ağırlıklar tohumlandı ({n} satır)", n=seeded)
+    predictor = LivePredictor(repo, ledger, FeatureStore(repo), outbox=outbox)
+    jobs = build_jobs(
+        repo=repo,
+        ledger=ledger,
+        predictor=predictor,
+        resolver=resolver,
+        klines=klines,
+        derivatives=derivatives,
+        health=health,
+        outbox=outbox,
+        clock=clock,
+        symbols=symbols,
+        heartbeat_interval_sec=settings.heartbeat_interval_sec,
+    )
+    for job in jobs:
+        health.register(job.name, expected_interval=job.every)
+    return EngineRuntime(
+        health=health, klines=klines, klines_ws=klines_ws, orderflow_ws=orderflow_ws, jobs=jobs
+    )
+
+
 async def run(
     settings: Settings,
     *,
@@ -269,41 +332,16 @@ async def run(
             for sig in (signal.SIGTERM, signal.SIGINT):
                 loop.add_signal_handler(sig, stop.set)
 
-        health = HealthRegistry(clock)
-        outbox = Outbox(repo, clock)
-        symbols = list(settings.symbols)
-        klines = KlinesCollector(client, repo, clock, symbols=symbols, intervals=CANDLE_INTERVALS)
-        klines_ws = KlinesWsCollector(
-            settings.binance_ws_spot, repo, clock, health, symbols=symbols, connect=connect
+        parts = await build_runtime(
+            settings, repo, clock, connect=connect, futures_client=futures_client, client=client
         )
-        derivatives = build_derivative_collectors(futures_client, repo, clock, symbols)
-        health.register(klines.name)
-        health.register(klines_ws.name)
-        for name in derivatives.names:
-            health.register(name)
-        ledger = Ledger(repo, clock, outbox)
-        resolver = Resolver(repo, clock, outbox, backfill=klines)
-        # Ağırlıklar yalnızca tablo boşken tohumlanır; K3 gereği üzerine yazılmaz.
-        seeded = await repo.seed_weights(load_default_weights(), valid_from=clock.now())
-        if seeded:
-            log.info("varsayılan ağırlıklar tohumlandı ({n} satır)", n=seeded)
-        predictor = LivePredictor(repo, ledger, FeatureStore(repo), outbox=outbox)
-        jobs = build_jobs(
-            repo=repo,
-            ledger=ledger,
-            predictor=predictor,
-            resolver=resolver,
-            klines=klines,
-            derivatives=derivatives,
-            health=health,
-            outbox=outbox,
-            clock=clock,
-            symbols=symbols,
-            heartbeat_interval_sec=settings.heartbeat_interval_sec,
+        health, klines, klines_ws, orderflow_ws, jobs = (
+            parts.health,
+            parts.klines,
+            parts.klines_ws,
+            parts.orderflow_ws,
+            parts.jobs,
         )
-
-        for job in jobs:
-            health.register(job.name, expected_interval=job.every)
 
         tasks = [
             asyncio.create_task(
@@ -312,6 +350,10 @@ async def run(
             ),
             asyncio.create_task(
                 supervise("klines_ws", lambda: klines_ws.run(stop), stop, health), name="klines_ws"
+            ),
+            asyncio.create_task(
+                supervise("ws_orderflow", lambda: orderflow_ws.run(stop), stop, health),
+                name="ws_orderflow",
             ),
         ]
         if run_startup_tasks:
@@ -322,7 +364,7 @@ async def run(
             "engine başladı (sürüm {v}, commit {sha}, semboller {s})",
             v=__version__,
             sha=git_sha(),
-            s=symbols,
+            s=list(settings.symbols),
         )
         await stop.wait()
         log.info("kapanış sinyali alındı; görevler kapatılıyor")

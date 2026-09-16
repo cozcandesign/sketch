@@ -261,3 +261,45 @@ class TakerVolumePoint(BaseModel):
     buy_vol: float
     sell_vol: float
     ratio: float
+
+
+class Liquidation(BaseModel):
+    """Tek bir zorunlu kapatma (forceOrder). `side`: kapanan pozisyonun yönü."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    ts: datetime
+    side: Literal["long", "short"]
+    qty: float
+    price: float
+    usd: float
+
+
+class OrderflowRow(BaseModel):
+    """Bir dakikalık order flow özeti (`orderflow_1m`).
+
+    Alanlar iki kaynaktan gelir: işlem/likidasyon/top-20 değerlerini WS akışı, ±%1 derinliği REST
+    anlık görüntüsü yazar. Bu yüzden `None` alanlar "bu kaynak yazmadı" demektir ve upsert sırasında
+    diğer kaynağın yazdığı değeri **ezmez**.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    ts: datetime  # dakikanın başlangıcı (UTC)
+    buy_vol: float | None = None
+    sell_vol: float | None = None
+    cvd_delta: float | None = None
+    trade_count: int | None = None
+    liq_long_usd: float | None = None
+    liq_short_usd: float | None = None
+    liq_count: int | None = None
+    top20_bid_qty: float | None = None
+    top20_ask_qty: float | None = None
+    top20_imbalance: float | None = None
+    depth1pct_bid_usd: float | None = None
+    depth1pct_ask_usd: float | None = None
+    depth1pct_imbalance: float | None = None
+    spread_bps: float | None = None
+    coverage_seconds: float | None = None

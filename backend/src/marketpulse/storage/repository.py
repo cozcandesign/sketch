@@ -15,10 +15,12 @@ from marketpulse.storage.models import (
     FundingLive,
     FundingRate,
     Heartbeat,
+    Liquidation,
     LongShortPoint,
     ModuleResolvedRow,
     NewPrediction,
     OpenInterestPoint,
+    OrderflowRow,
     OutboxEvent,
     Prediction,
     PredictionOutcome,
@@ -118,6 +120,14 @@ class Repository(Protocol):
     async def upsert_open_interest(self, rows: Sequence[OpenInterestPoint]) -> int: ...
     async def upsert_long_short(self, rows: Sequence[LongShortPoint]) -> int: ...
     async def upsert_taker_volume(self, rows: Sequence[TakerVolumePoint]) -> int: ...
+    async def upsert_orderflow(self, rows: Sequence[OrderflowRow]) -> int: ...
+    async def insert_liquidations(self, rows: Sequence[Liquidation]) -> int: ...
+    async def get_orderflow(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[OrderflowRow]: ...
+    async def get_liquidations(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[Liquidation]: ...
     async def get_funding_rates(
         self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
     ) -> list[FundingRate]: ...

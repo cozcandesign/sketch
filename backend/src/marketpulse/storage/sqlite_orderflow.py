@@ -14,8 +14,10 @@ from marketpulse.storage import tables as t
 from marketpulse.storage.models import (
     FundingLive,
     FundingRate,
+    Liquidation,
     LongShortPoint,
     OpenInterestPoint,
+    OrderflowRow,
     TakerVolumePoint,
 )
 from marketpulse.storage.sqlite_base import SqliteBase
@@ -48,6 +50,40 @@ class OrderflowMixin(SqliteBase):
         return await self._upsert(
             t.taker_volume, [row.model_dump() for row in rows], ("symbol", "ts")
         )
+
+    async def upsert_orderflow(self, rows: Sequence[OrderflowRow]) -> int:
+        """`orderflow_1m` satırlarını yazar.
+
+        `None` alanlar yazılmaz: aynı dakikaya WS (işlem/kitap) ve REST (±%1 derinlik) ayrı ayrı
+        yazar; biri diğerinin sütunlarını sıfırlamamalı.
+        """
+        payload = [row.model_dump(exclude_none=True) for row in rows]
+        return await self._upsert(t.orderflow_1m, payload, ("symbol", "ts"))
+
+    async def insert_liquidations(self, rows: Sequence[Liquidation]) -> int:
+        """Ham likidasyonlar (otomatik id). Aynı olay iki kez gelirse tekrar yazılır; kümeleme
+        Faz 14'te bu tabloyu okur ve zaman penceresiyle çalışır."""
+        if not rows:
+            return 0
+        async with self._engine.begin() as conn:
+            await conn.execute(t.liquidations.insert(), [row.model_dump() for row in rows])
+        return len(rows)
+
+    async def get_orderflow(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[OrderflowRow]:
+        rows = await self._select(
+            t.orderflow_1m, symbol, t.orderflow_1m.c.ts, as_of=as_of, start=start
+        )
+        return [OrderflowRow(**row) for row in rows]
+
+    async def get_liquidations(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[Liquidation]:
+        rows = await self._select(
+            t.liquidations, symbol, t.liquidations.c.ts, as_of=as_of, start=start
+        )
+        return [Liquidation(**{k: v for k, v in row.items() if k != "id"}) for row in rows]
 
     async def get_funding_rates(
         self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None

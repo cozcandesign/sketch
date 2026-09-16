@@ -211,3 +211,74 @@ def taker_volume_rows(count: int = 3) -> list[dict[str, Any]]:
         }
         for index in range(count)
     ]
+
+
+def ws_agg_trade(
+    symbol: str, *, qty: float, price: float, is_buyer_maker: bool, ts: datetime
+) -> dict[str, Any]:
+    """`<sym>@aggTrade` combined stream mesajı."""
+    return {
+        "stream": f"{symbol.lower()}@aggTrade",
+        "data": {
+            "e": "aggTrade",
+            "E": to_epoch_ms(ts),
+            "s": symbol,
+            "a": 123456,
+            "p": f"{price:.2f}",
+            "q": f"{qty:.4f}",
+            "f": 100,
+            "l": 105,
+            "T": to_epoch_ms(ts),
+            "m": is_buyer_maker,
+        },
+    }
+
+
+def ws_force_order(
+    symbol: str, *, side: str, qty: float, price: float, ts: datetime
+) -> dict[str, Any]:
+    """`<sym>@forceOrder` mesajı. `side` emir yönüdür: SELL → long tasfiyesi."""
+    return {
+        "stream": f"{symbol.lower()}@forceOrder",
+        "data": {
+            "e": "forceOrder",
+            "E": to_epoch_ms(ts),
+            "o": {
+                "s": symbol,
+                "S": side,
+                "o": "LIMIT",
+                "f": "IOC",
+                "q": f"{qty:.4f}",
+                "p": f"{price:.2f}",
+                "ap": f"{price:.2f}",
+                "X": "FILLED",
+                "l": f"{qty:.4f}",
+                "z": f"{qty:.4f}",
+                "T": to_epoch_ms(ts),
+            },
+        },
+    }
+
+
+def ws_depth20(
+    symbol: str,
+    *,
+    bids: list[tuple[float, float]],
+    asks: list[tuple[float, float]],
+    ts: datetime,
+) -> dict[str, Any]:
+    """`<sym>@depth20@100ms` kısmi derinlik mesajı (futures biçimi)."""
+    return {
+        "stream": f"{symbol.lower()}@depth20@100ms",
+        "data": {
+            "e": "depthUpdate",
+            "E": to_epoch_ms(ts),
+            "T": to_epoch_ms(ts),
+            "s": symbol,
+            "U": 1,
+            "u": 2,
+            "pu": 0,
+            "b": [[f"{p:.2f}", f"{q:.4f}"] for p, q in bids],
+            "a": [[f"{p:.2f}", f"{q:.4f}"] for p, q in asks],
+        },
+    }
