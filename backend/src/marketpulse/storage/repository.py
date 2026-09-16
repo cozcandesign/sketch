@@ -12,14 +12,19 @@ from marketpulse.storage.models import (
     Candle,
     CandleGap,
     CollectorHealth,
+    FundingLive,
+    FundingRate,
     Heartbeat,
+    LongShortPoint,
     ModuleResolvedRow,
     NewPrediction,
+    OpenInterestPoint,
     OutboxEvent,
     Prediction,
     PredictionOutcome,
     ResolvedRow,
     SignalRow,
+    TakerVolumePoint,
 )
 
 
@@ -106,6 +111,33 @@ class Repository(Protocol):
         horizon: Horizon | None = None,
         since: datetime | None = None,
     ) -> list[ModuleResolvedRow]: ...
+
+    # --- türev piyasa ---
+    async def upsert_funding_rates(self, rows: Sequence[FundingRate]) -> int: ...
+    async def upsert_funding_live(self, rows: Sequence[FundingLive]) -> int: ...
+    async def upsert_open_interest(self, rows: Sequence[OpenInterestPoint]) -> int: ...
+    async def upsert_long_short(self, rows: Sequence[LongShortPoint]) -> int: ...
+    async def upsert_taker_volume(self, rows: Sequence[TakerVolumePoint]) -> int: ...
+    async def get_funding_rates(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[FundingRate]: ...
+    async def get_funding_live(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[FundingLive]: ...
+    async def get_open_interest(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[OpenInterestPoint]: ...
+    async def get_long_short(
+        self,
+        symbol: str,
+        *,
+        kind: str | None = None,
+        as_of: datetime | None = None,
+        start: datetime | None = None,
+    ) -> list[LongShortPoint]: ...
+    async def get_taker_volume(
+        self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
+    ) -> list[TakerVolumePoint]: ...
 
     # --- ağırlıklar ---
     async def get_weights(self, horizon: Horizon) -> dict[str, float]: ...

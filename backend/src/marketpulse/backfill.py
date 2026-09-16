@@ -1,7 +1,10 @@
 """Geçmiş veri çekme komutu: `make backfill` (ROADMAP F1-13).
 
-Faz 1 kapsamı: spot mumlar. Funding, Fear & Greed ve makro serileri kendi fazlarında eklenir.
-Komut idempotenttir: tekrar çalıştırmak veriyi bozmaz, eksikleri tamamlar.
+Kapsam: spot mumlar + türev geçmişi (funding, açık pozisyon, long/short, taker hacmi).
+Fear & Greed ve makro serileri kendi fazlarında eklenir.
+
+Komut idempotenttir: tekrar çalıştırmak veriyi bozmaz, eksikleri tamamlar. Türev verisi Binance'te
+yalnızca son 30 gün tutulur (funding hariç); biz sildirmeyiz, arşiv ilk günden birikir (K5, K21).
 """
 
 import argparse
@@ -11,8 +14,15 @@ from datetime import timedelta
 from loguru import logger
 
 from marketpulse.collectors.binance_client import BinanceClient
+from marketpulse.collectors.binance_futures import FuturesClient
+from marketpulse.collectors.futures import (
+    FundingCollector,
+    LongShortCollector,
+    OpenInterestCollector,
+    TakerVolumeCollector,
+)
 from marketpulse.collectors.klines import BACKFILL_LOOKBACK, KlinesCollector
-from marketpulse.config import load_settings
+from marketpulse.config import Settings, load_settings
 from marketpulse.core.clock import SystemClock
 from marketpulse.core.logging import configure_logging
 from marketpulse.core.types import Interval, parse_symbol
@@ -38,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--days", type=int, help="Tüm zaman dilimleri için gün sayısını geçersiz kılar"
     )
+    parser.add_argument(
+        "--skip-derivatives",
+        action="store_true",
+        help="Yalnızca mumları çeker; funding/OI/long-short/taker atlanır",
+    )
     return parser
 
 
@@ -45,6 +60,8 @@ async def run_backfill(
     symbols: list[str] | None = None,
     intervals: list[Interval] | None = None,
     days: int | None = None,
+    *,
+    derivatives: bool = True,
 ) -> int:
     settings = load_settings()
     configure_logging(settings.log_level, process="backfill")
@@ -73,6 +90,8 @@ async def run_backfill(
             i=",".join(i.value for i in chosen_intervals),
         )
         written = await collector.backfill(lookback=lookback)
+        if derivatives:
+            await _backfill_derivatives(settings, repo, clock, chosen_symbols)
         for symbol in chosen_symbols:
             counts = {
                 interval.value: await repo.count_candles(symbol, interval)
@@ -85,11 +104,40 @@ async def run_backfill(
     return written
 
 
+async def _backfill_derivatives(
+    settings: Settings, repo: SqliteRepository, clock: SystemClock, symbols: list[str]
+) -> None:
+    """Türev geçmişi. Bir uç nokta başarısız olursa diğerleri yine denenir; mumlar etkilenmez."""
+    limiter = RateLimiter(clock, name="binance_futures")
+    client = BinanceClient(settings.binance_futures_base, limiter)
+    futures = FuturesClient(client)
+    try:
+        tasks = (
+            ("funding", FundingCollector(futures, repo, clock, symbols=symbols).backfill),
+            (
+                "open_interest",
+                OpenInterestCollector(futures, repo, clock, symbols=symbols).backfill,
+            ),
+            ("long_short", LongShortCollector(futures, repo, symbols=symbols).poll),
+            ("taker_volume", TakerVolumeCollector(futures, repo, symbols=symbols).poll),
+        )
+        for name, task in tasks:
+            try:
+                count = await task()
+                logger.bind(collector=name).info("türev geçmişi: {n} satır", n=count)
+            except Exception as exc:  # bir veri seti eksik kalabilir, komut çökmez
+                logger.bind(collector=name).warning("türev geçmişi alınamadı: {e}", e=repr(exc))
+    finally:
+        await client.aclose()
+
+
 def main() -> None:
     args = build_parser().parse_args()
     symbols = [parse_symbol(s) for s in args.symbols.split(",")] if args.symbols else None
     intervals = [Interval(i.strip()) for i in args.intervals.split(",")] if args.intervals else None
-    written = asyncio.run(run_backfill(symbols, intervals, args.days))
+    written = asyncio.run(
+        run_backfill(symbols, intervals, args.days, derivatives=not args.skip_derivatives)
+    )
     logger.info("bitti: {n} mum yazıldı", n=written)
 
 

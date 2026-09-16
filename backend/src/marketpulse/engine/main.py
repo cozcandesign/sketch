@@ -7,6 +7,7 @@ ensemble → rapor), referans tahminciler, sonuç çözümleyici, saklama ve hea
 import asyncio
 import signal
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import httpx
@@ -14,6 +15,13 @@ from loguru import logger
 
 from marketpulse import __version__
 from marketpulse.collectors.binance_client import BinanceClient
+from marketpulse.collectors.binance_futures import FuturesClient
+from marketpulse.collectors.futures import (
+    FundingCollector,
+    LongShortCollector,
+    OpenInterestCollector,
+    TakerVolumeCollector,
+)
 from marketpulse.collectors.klines import KlinesCollector
 from marketpulse.collectors.klines_ws import KlinesWsCollector
 from marketpulse.collectors.ws_stream import ConnectFactory, binance_connect
@@ -25,7 +33,7 @@ from marketpulse.core.time import floor_to_minute
 from marketpulse.core.types import Horizon, Interval
 from marketpulse.core.version import git_sha
 from marketpulse.engine.health import HealthRegistry
-from marketpulse.engine.jobs import Job, run_jobs
+from marketpulse.engine.jobs import Job, JobFn, run_jobs
 from marketpulse.engine.predict import LivePredictor, run_baseline_predictions
 from marketpulse.engine.ratelimit import RateLimiter
 from marketpulse.engine.retention import run_retention
@@ -65,6 +73,37 @@ async def ensure_single_instance(repo: Repository, clock: Clock, stale_after_sec
         raise EngineAlreadyRunningError(msg)
 
 
+@dataclass(frozen=True)
+class DerivativeCollectors:
+    """Türev REST toplayıcıları; engine ve testler aynı demeti kullanır."""
+
+    funding: FundingCollector
+    open_interest: OpenInterestCollector
+    long_short: LongShortCollector
+    taker_volume: TakerVolumeCollector
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return (
+            self.funding.name,
+            self.open_interest.name,
+            self.long_short.name,
+            self.taker_volume.name,
+        )
+
+
+def build_derivative_collectors(
+    client: BinanceClient, repo: Repository, clock: Clock, symbols: list[str]
+) -> DerivativeCollectors:
+    futures = FuturesClient(client)
+    return DerivativeCollectors(
+        funding=FundingCollector(futures, repo, clock, symbols=symbols),
+        open_interest=OpenInterestCollector(futures, repo, clock, symbols=symbols),
+        long_short=LongShortCollector(futures, repo, symbols=symbols),
+        taker_volume=TakerVolumeCollector(futures, repo, symbols=symbols),
+    )
+
+
 def build_jobs(
     *,
     repo: Repository,
@@ -72,6 +111,7 @@ def build_jobs(
     predictor: LivePredictor,
     resolver: Resolver,
     klines: KlinesCollector,
+    derivatives: DerivativeCollectors,
     health: HealthRegistry,
     outbox: Outbox,
     clock: Clock,
@@ -113,6 +153,21 @@ def build_jobs(
     async def gap_check(_scheduled: datetime) -> None:
         await klines.fill_gaps()
 
+    def collector_job(name: str, work: Callable[[], Awaitable[int]]) -> JobFn:
+        """Collector işini sağlık kaydına bağlar: hata engine'i düşürmez (CLAUDE.md §6)."""
+
+        async def run(_scheduled: datetime) -> None:
+            try:
+                written = await work()
+            except Exception as exc:
+                health.record_error(name, exc)
+                logger.bind(collector=name).warning("toplama başarısız: {e}", e=repr(exc))
+                return
+            health.record_success(name)
+            logger.bind(collector=name).debug("{n} satır yazıldı", n=written)
+
+        return run
+
     async def retention(_scheduled: datetime) -> None:
         await run_retention(repo, clock)
 
@@ -125,6 +180,44 @@ def build_jobs(
             Job(f"predict_{h.value}", h.cadence, predict_job(h), offset=PREDICT_OFFSET)
             for h in Horizon
         ],
+        # Türev metrikleri: anlık okumalar dakikalık, 5 dk ızgarasındaki seriler 5 dakikalık,
+        # geçmiş tamamlamaları seyrek (ARCHITECTURE.md §4 sıklık sütunu).
+        Job(
+            "funding_live",
+            timedelta(minutes=1),
+            collector_job(derivatives.funding.name, derivatives.funding.poll_live),
+            offset=timedelta(seconds=5),
+        ),
+        Job(
+            "open_interest_live",
+            timedelta(minutes=1),
+            collector_job(derivatives.open_interest.name, derivatives.open_interest.poll_live),
+            offset=timedelta(seconds=8),
+        ),
+        Job(
+            "long_short",
+            timedelta(minutes=5),
+            collector_job(derivatives.long_short.name, derivatives.long_short.poll),
+            offset=timedelta(seconds=40),
+        ),
+        Job(
+            "taker_volume",
+            timedelta(minutes=5),
+            collector_job(derivatives.taker_volume.name, derivatives.taker_volume.poll),
+            offset=timedelta(seconds=50),
+        ),
+        Job(
+            "open_interest_hist",
+            timedelta(hours=1),
+            collector_job(derivatives.open_interest.name, derivatives.open_interest.backfill),
+            offset=timedelta(minutes=2),
+        ),
+        Job(
+            "funding_hist",
+            timedelta(hours=8),
+            collector_job(derivatives.funding.name, derivatives.funding.backfill),
+            offset=timedelta(minutes=4),
+        ),
     ]
 
 
@@ -163,6 +256,8 @@ async def run(
     repo = SqliteRepository(engine, db_url=settings.db_url)
     limiter = RateLimiter(clock, name="binance_spot")
     client = BinanceClient(settings.binance_spot_base, limiter, http=http)
+    futures_limiter = RateLimiter(clock, name="binance_futures")
+    futures_client = BinanceClient(settings.binance_futures_base, futures_limiter, http=http)
     try:
         if not await wait_for_schema(engine, timeout_sec=schema_wait_sec):
             log.warning("şema hazır değil; migration engine tarafından koşuluyor")
@@ -181,8 +276,11 @@ async def run(
         klines_ws = KlinesWsCollector(
             settings.binance_ws_spot, repo, clock, health, symbols=symbols, connect=connect
         )
+        derivatives = build_derivative_collectors(futures_client, repo, clock, symbols)
         health.register(klines.name)
         health.register(klines_ws.name)
+        for name in derivatives.names:
+            health.register(name)
         ledger = Ledger(repo, clock, outbox)
         resolver = Resolver(repo, clock, outbox, backfill=klines)
         # Ağırlıklar yalnızca tablo boşken tohumlanır; K3 gereği üzerine yazılmaz.
@@ -196,6 +294,7 @@ async def run(
             predictor=predictor,
             resolver=resolver,
             klines=klines,
+            derivatives=derivatives,
             health=health,
             outbox=outbox,
             clock=clock,
@@ -233,6 +332,7 @@ async def run(
         await repo.clear_heartbeat()
     finally:
         await client.aclose()
+        await futures_client.aclose()
         await repo.close()
     log.info("engine kapandı")
 

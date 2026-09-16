@@ -197,3 +197,67 @@ class ResolvedRow(BaseModel):
     hit: bool
     non_overlapping: bool
     confidence_label: ConfidenceLabel
+
+
+# --- türev piyasa (Faz 3, ARCHITECTURE.md §4) ---
+
+
+class FundingRate(BaseModel):
+    """Gerçekleşmiş funding ödemesi (8 saatte bir)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    funding_time: datetime
+    rate: float
+    mark_price: float | None = None
+
+
+class FundingLive(BaseModel):
+    """Anlık funding göstergesi: son oran, sonraki ödeme zamanı, mark/index fiyatı."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    ts: datetime
+    last_rate: float
+    next_funding_time: datetime | None = None
+    mark_price: float | None = None
+    index_price: float | None = None
+
+
+class OpenInterestPoint(BaseModel):
+    """Açık pozisyon. `source`: 'hist' (5 dk ızgarası) veya 'live' (anlık okuma)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    ts: datetime
+    oi: float
+    oi_value_usd: float | None = None
+    source: Literal["hist", "live"]
+
+
+class LongShortPoint(BaseModel):
+    """Long/short dağılımı. `kind`: global hesap, top hesap, top pozisyon."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    ts: datetime
+    kind: Literal["global_account", "top_account", "top_position"]
+    long_ratio: float
+    short_ratio: float
+    ratio: float
+
+
+class TakerVolumePoint(BaseModel):
+    """5 dakikalık taker alış/satış hacmi (CVD'nin REST yedeği)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    ts: datetime
+    buy_vol: float
+    sell_vol: float
+    ratio: float

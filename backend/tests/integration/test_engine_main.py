@@ -98,13 +98,17 @@ async def test_run_writes_heartbeat_and_clears_on_stop(tmp_path: Path) -> None:
             run_startup_tasks=False,
         )
     )
+    expected = {"spot_klines", "klines_ws", "funding", "open_interest"}
+    health: set[str] = set()
     for _ in range(200):
         await asyncio.sleep(0.02)
+        # Heartbeat ve sağlık satırları ayrı transaction'larda yazılır; ikisini de bekle.
         if await repo.read_heartbeat() is not None:
-            break
+            health = {h.collector for h in await repo.list_collector_health()}
+            if expected <= health:
+                break
     assert await repo.read_heartbeat() is not None
-    health = {h.collector for h in await repo.list_collector_health()}
-    assert {"spot_klines", "klines_ws"} <= health
+    assert expected <= health
     stop.set()
     await asyncio.wait_for(task, timeout=10)
     assert await repo.read_heartbeat() is None

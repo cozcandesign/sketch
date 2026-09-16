@@ -128,3 +128,86 @@ def ws_mini_ticker_message(symbol: str, last: float, open_price: float) -> dict[
             "q": f"{last * 1234.5:.8f}",
         },
     }
+
+
+# --- USDT-M futures (ARCHITECTURE.md §4) ---
+# Alan adları ve sıraları Binance futures dokümanındaki örneklerden alınmıştır. Gerçek uca bu
+# geliştirme ortamından erişilemediği için doğrulama kullanıcının makinesinde yapılacaktır.
+
+FUTURES_T0 = datetime(2026, 1, 2, 12, 0, tzinfo=UTC)
+
+
+def funding_rate_rows(symbol: str = "BTCUSDT", count: int = 3) -> list[dict[str, Any]]:
+    """`GET /fapi/v1/fundingRate` — 8 saatte bir gerçekleşen funding."""
+    return [
+        {
+            "symbol": symbol,
+            "fundingTime": to_epoch_ms(FUTURES_T0 + timedelta(hours=8 * index)),
+            "fundingRate": f"{0.0001 * (index + 1):.8f}",
+            "markPrice": f"{60000 + index * 25:.8f}",
+        }
+        for index in range(count)
+    ]
+
+
+def premium_index(symbol: str = "BTCUSDT") -> dict[str, Any]:
+    """`GET /fapi/v1/premiumIndex` — anlık funding göstergesi."""
+    return {
+        "symbol": symbol,
+        "markPrice": "60125.30000000",
+        "indexPrice": "60110.10000000",
+        "estimatedSettlePrice": "60120.00000000",
+        "lastFundingRate": "0.00012500",
+        "interestRate": "0.00010000",
+        "nextFundingTime": to_epoch_ms(FUTURES_T0 + timedelta(hours=8)),
+        "time": to_epoch_ms(FUTURES_T0),
+    }
+
+
+def open_interest_live(symbol: str = "BTCUSDT") -> dict[str, Any]:
+    """`GET /fapi/v1/openInterest`."""
+    return {
+        "openInterest": "76543.210",
+        "symbol": symbol,
+        "time": to_epoch_ms(FUTURES_T0),
+    }
+
+
+def open_interest_hist_rows(symbol: str = "BTCUSDT", count: int = 3) -> list[dict[str, Any]]:
+    """`GET /futures/data/openInterestHist?period=5m`."""
+    return [
+        {
+            "symbol": symbol,
+            "sumOpenInterest": f"{76000 + index * 50:.8f}",
+            "sumOpenInterestValue": f"{(76000 + index * 50) * 60000:.8f}",
+            "timestamp": to_epoch_ms(FUTURES_T0 + timedelta(minutes=5 * index)),
+        }
+        for index in range(count)
+    ]
+
+
+def long_short_rows(symbol: str = "BTCUSDT", count: int = 3) -> list[dict[str, Any]]:
+    """`globalLongShortAccountRatio` / `topLongShortAccountRatio` / `topLongShortPositionRatio`."""
+    return [
+        {
+            "symbol": symbol,
+            "longAccount": f"{0.60 + index * 0.01:.4f}",
+            "longShortRatio": f"{1.50 + index * 0.05:.4f}",
+            "shortAccount": f"{0.40 - index * 0.01:.4f}",
+            "timestamp": to_epoch_ms(FUTURES_T0 + timedelta(minutes=5 * index)),
+        }
+        for index in range(count)
+    ]
+
+
+def taker_volume_rows(count: int = 3) -> list[dict[str, Any]]:
+    """`GET /futures/data/takerlongshortRatio` — yanıtta sembol alanı yoktur."""
+    return [
+        {
+            "buySellRatio": f"{1.20 + index * 0.05:.4f}",
+            "buyVol": f"{380.0 + index:.4f}",
+            "sellVol": f"{310.0 + index:.4f}",
+            "timestamp": to_epoch_ms(FUTURES_T0 + timedelta(minutes=5 * index)),
+        }
+        for index in range(count)
+    ]

@@ -181,7 +181,7 @@ Faz 2 durum notu (geliştirme ortamında doğrulandı)
 Kendi arşivimiz birikmeye başlıyor.
 
 Görevler
-- [ ] F3-1 `collectors/funding` (geçmiş + anlık), `open_interest` (hist + live), `long_short`, `taker_volume`
+- [x] F3-1 `collectors/funding` (geçmiş + anlık), `open_interest` (hist + live), `long_short`, `taker_volume`
       + testleri; `make backfill`'e funding ve 30 günlük OI/LS/taker eklenir.
 - [ ] F3-2 `collectors/binance_ws` futures akışları: `aggTrade`, `forceOrder`, `depth20@100ms`; 1 dk kova
       toplayıcı (`orderflow_1m`), `coverage_seconds`, `liquidations` ham kayıt; kapanışta flush + testleri.
