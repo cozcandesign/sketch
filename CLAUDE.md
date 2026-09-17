@@ -255,6 +255,7 @@ Ayrıntı: `ARCHITECTURE.md`.
 | `make check` | lint + typecheck + test. **Commit öncesi zorunlu.** |
 | `make migrate` | alembic upgrade head |
 | `make backfill` | geçmiş klines / funding / F&G / makro verisini çeker |
+| `make wscheck` | futures WS akışlarını 30 sn dinler, hangi akıştan kaç mesaj geldiğini yazar (teşhis) |
 | `make backtest ARGS="--symbol BTCUSDT --from 2025-01-01 --to 2025-06-30"` | backtest motoru |
 | `make gen-types` | OpenAPI → `frontend/src/api/types.gen.ts` |
 

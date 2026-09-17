@@ -6,7 +6,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 NPM := npm --prefix frontend
 
-.PHONY: help install ensure-deps dev dev-stop up down logs test test-backend test-frontend lint typecheck check migrate gen-types backfill backtest
+.PHONY: help install ensure-deps dev dev-stop up down logs test test-backend test-frontend lint typecheck check migrate gen-types backfill backtest wscheck
 
 # Çalışan kodun commit'i; süreçlere ve Docker imajına geçer, arayüzde görünür.
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo bilinmiyor)
@@ -74,6 +74,9 @@ migrate: ensure-deps ## Alembic: şemayı en son sürüme getir
 gen-types: ensure-deps ## OpenAPI → frontend/src/api/types.gen.ts
 	backend/.venv/bin/python -m marketpulse.api.openapi_export > frontend/openapi.json
 	$(NPM) run gen-types
+
+wscheck: ensure-deps ## Futures WS akışlarını dinler ve hangisinden kaç mesaj geldiğini yazar (teşhis)
+	backend/.venv/bin/python -m marketpulse.devtools.wscheck $(ARGS)
 
 backfill: ensure-deps ## Geçmiş mum verisini Binance'ten çeker (ARGS="--days 7" ile sınırlanabilir)
 	backend/.venv/bin/python -m marketpulse.backfill $(ARGS)

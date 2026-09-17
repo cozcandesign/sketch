@@ -195,6 +195,10 @@ Görevler
 - [x] F3-8 Frontend: Coin detay alt panelleri — `FundingPanel`, `OIPanel` (OI + fiyat, durum etiketi),
       `LiquidationPanel`, `OrderBookPanel`, `CVDPanel`; `ModuleBreakdown`'da orderflow bileşenleri.
 - [x] F3-9 Retention: orderflow_1m ve liquidations 90 gün.
+- [x] F3-11 `make wscheck`: futures WS akışlarını 30 saniye dinleyip hangi akıştan kaç mesaj
+      geldiğini yazan teşhis aracı (`devtools/`, üretim yolunda değil). Sebep: canlıda order book
+      akışı geliyor ama `aggTrade` gelmiyor, işlem sayısı sıfır kalıyor; bu ortamdan Binance'e
+      erişilemediği için sebebi kullanıcının makinesinde ölçmek gerekiyor.
 - [x] F3-10 Canlı çalıştırmada çıkan düzeltmeler: (a) `spot_klines` sağlık kaydı `gap_check` işine
       bağlanır — REST toplayıcı çalışırken şeritte yanlışlıkla "aksıyor" görünüyordu; (b) türev geçmiş
       tamamlamaları (`funding_hist`, `open_interest_hist`) açılışta bir kez koşar — funding z-skoru ve

@@ -4,9 +4,12 @@ import socket
 import sys
 import threading
 import time
+from collections import Counter
 
 import pytest
 
+from marketpulse.collectors.orderflow_ws import streams_for
+from marketpulse.collectors.ws_stream import combined_url
 from marketpulse.devtools import runner as runner_module
 from marketpulse.devtools.procs import (
     RESTART_CAP_SEC,
@@ -22,6 +25,7 @@ from marketpulse.devtools.procs import (
     port_is_busy,
 )
 from marketpulse.devtools.runner import ProcessSpec, Supervisor
+from marketpulse.devtools.wscheck import report
 
 REPO = "/home/user/sketch"
 
@@ -186,3 +190,30 @@ def test_ancestor_chain_covers_make_and_the_users_shell() -> None:
 
 def test_ancestor_chain_survives_a_pid_loop() -> None:
     assert ancestor_pids(5, {5: 6, 6: 5}) == {5, 6}
+
+
+class TestWsCheck:
+    """Teşhis aracı engine ile **aynı** URL'ye bağlanmalı; yoksa ölçtüğü şey başka olur (F3-11)."""
+
+    def test_it_listens_to_the_same_streams_the_engine_subscribes_to(self) -> None:
+        url = combined_url("wss://fstream.binance.com/stream", streams_for(["BTCUSDT"]))
+
+        assert url == (
+            "wss://fstream.binance.com/stream?streams="
+            "btcusdt@aggTrade/btcusdt@forceOrder/btcusdt@depth20@100ms"
+        )
+
+    async def test_the_report_names_a_stream_that_never_arrived(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # Order book geliyor, işlem gelmiyor: canlıda görülen tablo.
+        report(
+            Counter({"btcusdt@depth20@100ms": 120}),
+            Counter({"depthUpdate": 120}),
+            None,
+        )
+
+        out = capsys.readouterr().out
+        assert "aggTrade hiç gelmedi" in out
+        assert "forceOrder hiç gelmedi" in out
+        assert "İşlem mesajı hiç gelmedi" in out
