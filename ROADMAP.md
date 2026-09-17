@@ -199,6 +199,12 @@ Görevler
       geldiğini yazan teşhis aracı (`devtools/`, üretim yolunda değil). Sebep: canlıda order book
       akışı geliyor ama `aggTrade` gelmiyor, işlem sayısı sıfır kalıyor; bu ortamdan Binance'e
       erişilemediği için sebebi kullanıcının makinesinde ölçmek gerekiyor.
+      **Ölçüm 1 (kullanıcı makinesi):** depth 9,3 mesaj/sn (belgelenen hıza uygun), `aggTrade`
+      30 saniyede 0. Üç yazım denendi (olduğu gibi / küçük harf / tek akış ucu), üçü de 0 →
+      **akış adı hipotezi elendi.**
+      **Ölçüm 2 (bekleniyor):** futures ve spot işlem akışları, her biri kendi kontrol akışıyla
+      birlikte. Amaç: sorun futures işlem akışına mı özgü, yoksa işlem akışlarının tamamı mı
+      bu ağda gelmiyor.
 - [x] F3-10 Canlı çalıştırmada çıkan düzeltmeler: (a) `spot_klines` sağlık kaydı `gap_check` işine
       bağlanır — REST toplayıcı çalışırken şeritte yanlışlıkla "aksıyor" görünüyordu; (b) türev geçmiş
       tamamlamaları (`funding_hist`, `open_interest_hist`) açılışta bir kez koşar — funding z-skoru ve

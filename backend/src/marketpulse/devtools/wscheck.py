@@ -28,74 +28,132 @@ PROBE_SECONDS = 8.0
 EXPECTED_EVENTS = ("aggTrade", "forceOrder", "depthUpdate")
 
 
+class _ClosedEarlyError(Exception):
+    """Akış süre dolmadan bitti: sunucu kapattı demektir."""
+
+
 @dataclass(frozen=True)
 class Probe:
-    """Tek bir abonelik yazımı denemesi: etiket + bağlanılacak URL."""
+    """Tek bir deneme: etiket + bağlanılacak URL."""
 
     label: str
     url: str
 
 
-def probe_urls(base_url: str, symbol: str) -> list[Probe]:
-    """`aggTrade` için üç aday yazım.
+@dataclass(frozen=True)
+class ProbeResult:
+    """Denemenin sonucu.
 
-    Neden üçü birden: `depth20@100ms` geliyor ama `aggTrade` gelmiyor; aradaki tek göze çarpan
-    fark akış adındaki büyük harf. Ancak spot tarafında `miniTicker` (büyük T) sorunsuz çalışıyor,
-    yani "her yerde küçük harf" bir tahmin olurdu. Tahmin etmek yerine üçünü de ölçüyoruz.
+    `total` her tür mesajı sayar, `trades` yalnızca `aggTrade`'i. İkisi birlikte "bağlandık ama
+    sessiz" ile "sunucu hiçbir şey göndermedi"yi ayırır. `ended` bağlantının nasıl bittiğini söyler:
+    süre dolduysa akış açık kalmıştır, erken bittiyse karşı taraf kapatmıştır.
+    """
+
+    label: str
+    total: int
+    trades: int
+    seconds: float
+    ended: str
+
+    @property
+    def connected(self) -> bool:
+        return not self.ended.startswith("bağlanamadı")
+
+    def line(self) -> str:
+        if not self.connected:
+            return f"  {self.label:<32} → {self.ended}"
+        return (
+            f"  {self.label:<32} → {self.trades:>5} işlem | {self.total:>5} mesaj "
+            f"| {self.seconds:>4.1f} sn | {self.ended}"
+        )
+
+
+def probe_plan(futures_base: str, spot_base: str, symbol: str) -> list[Probe]:
+    """Dört deneme: işlem akışı (futures/spot) ve kontrol olarak çalıştığını bildiğimiz akış.
+
+    Yazım hipotezi kullanıcının verisiyle elendi (üç yazım da sıfır). Şimdi ayırt edilecek soru:
+    sorun futures işlem akışına mı özgü, yoksa bu ağda işlem akışlarının tamamı mı gelmiyor?
+    Kontrol denemesi olmadan "hiçbir şey gelmedi" ölçümü yorumlanamaz.
     """
     lower = symbol.lower()
-    single_base = base_url.rstrip("/").removesuffix("/stream")
+    futures_ws = futures_base.rstrip("/").removesuffix("/stream")
+    spot_ws = spot_base.rstrip("/").removesuffix("/stream")
     return [
-        Probe("combined, olduğu gibi (aggTrade)", combined_url(base_url, [f"{lower}@aggTrade"])),
-        Probe("combined, küçük harf (aggtrade)", combined_url(base_url, [f"{lower}@aggtrade"])),
-        Probe("tek akış /ws (aggTrade)", f"{single_base}/ws/{lower}@aggTrade"),
+        Probe("futures işlem (/ws)", f"{futures_ws}/ws/{lower}@aggTrade"),
+        Probe("futures derinlik (kontrol)", f"{futures_ws}/ws/{lower}@depth20@100ms"),
+        Probe("spot işlem (/ws)", f"{spot_ws}/ws/{lower}@aggTrade"),
+        Probe("spot mum (kontrol)", f"{spot_ws}/ws/{lower}@kline_1m"),
     ]
 
 
-async def count_trades(url: str, seconds: float) -> int:
-    """Verilen URL'de `seconds` boyunca kaç işlem mesajı geldiğini sayar. Hata → -1."""
-    seen = 0
+async def run_probe(probe: Probe, seconds: float) -> ProbeResult:
+    """Tek denemeyi çalıştırır; mesaj sayar ve bağlantının nasıl bittiğini kaydeder."""
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    total = trades = 0
+    ended = "süre doldu (akış açık kaldı)"
 
     async def pump() -> None:
-        nonlocal seen
-        async with binance_connect(url) as messages:
+        nonlocal total, trades
+        async with binance_connect(probe.url) as messages:
             async for raw in messages:
+                total += 1
                 payload: Any = json.loads(raw)
                 if not isinstance(payload, dict):
                     continue
                 data = payload.get("data", payload)
                 if isinstance(data, dict) and data.get("e") == "aggTrade":
-                    seen += 1
+                    trades += 1
+        # Döngü kendiliğinden bitti: karşı taraf bağlantıyı kapattı.
+        raise _ClosedEarlyError
 
     try:
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(pump(), timeout=seconds)
-    except (OSError, WebSocketException):
-        return -1
-    return seen
+        await asyncio.wait_for(pump(), timeout=seconds)
+    except TimeoutError:
+        pass
+    except _ClosedEarlyError:
+        ended = "sunucu kapattı"
+    except (OSError, WebSocketException) as exc:
+        ended = f"bağlanamadı: {type(exc).__name__}"
+    return ProbeResult(probe.label, total, trades, loop.time() - started, ended)
 
 
-async def probe_trade_streams(base_url: str, symbol: str, seconds: float) -> list[tuple[str, int]]:
-    """Üç yazımı sırayla dener. Çıktı: (etiket, işlem sayısı); -1 bağlanamadı demektir."""
-    results: list[tuple[str, int]] = []
-    for probe in probe_urls(base_url, symbol):
-        count = await count_trades(probe.url, seconds)
-        print(
-            f"  {probe.label:<34} → {'bağlanamadı' if count < 0 else f'{count} işlem'}", flush=True
-        )
-        results.append((probe.label, count))
+async def probe_trade_streams(
+    futures_base: str, spot_base: str, symbol: str, seconds: float
+) -> list[ProbeResult]:
+    results: list[ProbeResult] = []
+    for probe in probe_plan(futures_base, spot_base, symbol):
+        result = await run_probe(probe, seconds)
+        print(result.line(), flush=True)
+        results.append(result)
     return results
 
 
-def probe_verdict(results: list[tuple[str, int]]) -> str:
-    """Ölçüme dayalı sonuç cümlesi. Hiçbiri veri vermediyse bunu da açıkça söyler."""
-    working = [label for label, count in results if count > 0]
-    if not working:
+def probe_verdict(results: list[ProbeResult]) -> str:
+    """Ölçüme dayalı sonuç. Veri yetmiyorsa "bilmiyorum" der; tahmin üretmez."""
+    by_label = {result.label: result for result in results}
+    futures_trade = by_label.get("futures işlem (/ws)")
+    futures_control = by_label.get("futures derinlik (kontrol)")
+    spot_trade = by_label.get("spot işlem (/ws)")
+    if futures_trade is None or futures_control is None or spot_trade is None:
+        return "Deneme eksik: sonuç çıkarılamadı."
+
+    if futures_trade.trades > 0:
+        return "Futures işlem akışı bu denemede veri verdi: sorun engine'in abonelik kurulumunda."
+    if not futures_control.connected or futures_control.total == 0:
         return (
-            "Üç yazımın hiçbiri işlem vermedi: sorun akış adında değil. "
-            "Bu ağdan futures işlem akışı engelli olabilir."
+            "Kontrol denemesi de veri vermedi: ölçüm güvenilir değil (ağ ya da bağlantı sorunu). "
+            "Önce bunu çözmek gerekir."
         )
-    return "İşlem veren yazım(lar): " + ", ".join(working)
+    if spot_trade.trades > 0:
+        return (
+            "Spot işlem akışı çalışıyor, futures işlem akışı çalışmıyor. Sorun bu ağdan "
+            "futures işlem akışına özgü; derinlik akışı geldiği için bağlantının kendisi sağlam."
+        )
+    return (
+        "Ne futures ne spot işlem akışı veri verdi; derinlik ve mum akışları geliyor. "
+        "İşlem akışları bu ağda engelleniyor olabilir."
+    )
 
 
 def progress_line(elapsed: float, events: Counter[str]) -> str:
@@ -198,8 +256,10 @@ async def main(argv: list[str] | None = None) -> int:
     report(streams, events, first_trade)
 
     if events["aggTrade"] == 0:
-        print(f"\nİşlem akışı gelmedi. Abonelik yazımı deneniyor ({PROBE_SECONDS:.0f} sn × 3):")
-        results = await probe_trade_streams(settings.binance_ws_futures, symbols[0], PROBE_SECONDS)
+        print(f"\nİşlem akışı gelmedi. Dört deneme yapılıyor ({PROBE_SECONDS:.0f} sn × 4):")
+        results = await probe_trade_streams(
+            settings.binance_ws_futures, settings.binance_ws_spot, symbols[0], PROBE_SECONDS
+        )
         print(f"\n{probe_verdict(results)}")
     return 0
 

@@ -26,7 +26,13 @@ from marketpulse.devtools.procs import (
     port_is_busy,
 )
 from marketpulse.devtools.runner import ProcessSpec, Supervisor
-from marketpulse.devtools.wscheck import probe_urls, probe_verdict, progress_line, report
+from marketpulse.devtools.wscheck import (
+    ProbeResult,
+    probe_plan,
+    probe_verdict,
+    progress_line,
+    report,
+)
 
 REPO = "/home/user/sketch"
 
@@ -219,27 +225,91 @@ class TestWsCheck:
         assert "forceOrder hiç gelmedi" in out
         assert "İşlem mesajı hiç gelmedi" in out
 
-    def test_the_probes_cover_the_candidate_spellings(self) -> None:
-        """Üç aday: olduğu gibi, tamamen küçük harf, tek akış ucu."""
-        urls = [probe.url for probe in probe_urls("wss://fstream.binance.com/stream", "BTCUSDT")]
-
-        assert urls == [
-            "wss://fstream.binance.com/stream?streams=btcusdt@aggTrade",
-            "wss://fstream.binance.com/stream?streams=btcusdt@aggtrade",
-            "wss://fstream.binance.com/ws/btcusdt@aggTrade",
+    def test_the_plan_pairs_each_trade_stream_with_a_control(self) -> None:
+        """Kontrol denemesi olmadan "hiçbir şey gelmedi" ölçümü yorumlanamaz."""
+        labels = [
+            probe.label
+            for probe in probe_plan(
+                "wss://fstream.binance.com/stream",
+                "wss://stream.binance.com:9443/stream",
+                "BTCUSDT",
+            )
         ]
 
-    def test_the_verdict_names_the_spelling_that_worked(self) -> None:
-        verdict = probe_verdict([("olduğu gibi", 0), ("küçük harf", 412), ("tek akış", -1)])
+        assert labels == [
+            "futures işlem (/ws)",
+            "futures derinlik (kontrol)",
+            "spot işlem (/ws)",
+            "spot mum (kontrol)",
+        ]
 
-        assert "küçük harf" in verdict
-        assert "olduğu gibi" not in verdict
+    def test_the_plan_uses_the_single_stream_endpoint(self) -> None:
+        urls = [
+            probe.url
+            for probe in probe_plan(
+                "wss://fstream.binance.com/stream",
+                "wss://stream.binance.com:9443/stream",
+                "BTCUSDT",
+            )
+        ]
 
-    def test_the_verdict_does_not_blame_the_spelling_when_none_worked(self) -> None:
-        """Hiçbiri veri vermediyse sebep ad değildir; araç uydurmaz."""
-        verdict = probe_verdict([("a", 0), ("b", 0), ("c", 0)])
+        assert urls[0] == "wss://fstream.binance.com/ws/btcusdt@aggTrade"
+        assert urls[2] == "wss://stream.binance.com:9443/ws/btcusdt@aggTrade"
 
-        assert "akış adında değil" in verdict
+    def test_a_probe_that_ran_its_full_time_is_not_reported_as_a_close(self) -> None:
+        result = ProbeResult("futures işlem (/ws)", 0, 0, 8.0, "süre doldu (akış açık kaldı)")
+
+        assert result.connected
+        assert "süre doldu" in result.line()
+
+    def test_verdict_when_spot_trades_work_but_futures_do_not(self) -> None:
+        verdict = probe_verdict(
+            [
+                ProbeResult("futures işlem (/ws)", 0, 0, 8.0, "süre doldu (akış açık kaldı)"),
+                ProbeResult("futures derinlik (kontrol)", 780, 0, 8.0, "süre doldu"),
+                ProbeResult("spot işlem (/ws)", 412, 412, 8.0, "süre doldu"),
+                ProbeResult("spot mum (kontrol)", 8, 0, 8.0, "süre doldu"),
+            ]
+        )
+
+        assert "futures işlem akışına özgü" in verdict
+
+    def test_verdict_when_no_trade_stream_works_anywhere(self) -> None:
+        verdict = probe_verdict(
+            [
+                ProbeResult("futures işlem (/ws)", 0, 0, 8.0, "süre doldu"),
+                ProbeResult("futures derinlik (kontrol)", 780, 0, 8.0, "süre doldu"),
+                ProbeResult("spot işlem (/ws)", 0, 0, 8.0, "süre doldu"),
+                ProbeResult("spot mum (kontrol)", 8, 0, 8.0, "süre doldu"),
+            ]
+        )
+
+        assert "engelleniyor olabilir" in verdict
+
+    def test_verdict_refuses_to_conclude_when_the_control_is_silent(self) -> None:
+        """Kontrol de susuyorsa ölçüm bozuktur; araç bundan sonuç çıkarmamalı."""
+        verdict = probe_verdict(
+            [
+                ProbeResult("futures işlem (/ws)", 0, 0, 8.0, "süre doldu"),
+                ProbeResult("futures derinlik (kontrol)", 0, 0, 0.2, "sunucu kapattı"),
+                ProbeResult("spot işlem (/ws)", 0, 0, 8.0, "süre doldu"),
+                ProbeResult("spot mum (kontrol)", 0, 0, 8.0, "süre doldu"),
+            ]
+        )
+
+        assert "güvenilir değil" in verdict
+
+    def test_verdict_points_at_our_own_setup_when_the_probe_gets_trades(self) -> None:
+        verdict = probe_verdict(
+            [
+                ProbeResult("futures işlem (/ws)", 900, 900, 8.0, "süre doldu"),
+                ProbeResult("futures derinlik (kontrol)", 780, 0, 8.0, "süre doldu"),
+                ProbeResult("spot işlem (/ws)", 412, 412, 8.0, "süre doldu"),
+                ProbeResult("spot mum (kontrol)", 8, 0, 8.0, "süre doldu"),
+            ]
+        )
+
+        assert "abonelik kurulumunda" in verdict
 
     def test_the_progress_line_answers_the_question_on_its_own(self) -> None:
         """Kullanıcı 30 saniyeyi beklemeden kesse bile ara satır cevabı taşımalı."""
