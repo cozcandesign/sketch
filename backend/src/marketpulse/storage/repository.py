@@ -19,6 +19,7 @@ from marketpulse.storage.models import (
     LongShortPoint,
     ModuleResolvedRow,
     NewPrediction,
+    NewsItem,
     OpenInterestPoint,
     OrderflowRow,
     OutboxEvent,
@@ -122,6 +123,18 @@ class Repository(Protocol):
     async def upsert_taker_volume(self, rows: Sequence[TakerVolumePoint]) -> int: ...
     async def upsert_orderflow(self, rows: Sequence[OrderflowRow]) -> int: ...
     async def insert_liquidations(self, rows: Sequence[Liquidation]) -> int: ...
+
+    # --- haberler ---
+    async def upsert_news(self, rows: Sequence[NewsItem]) -> int: ...
+    async def get_news(
+        self,
+        *,
+        as_of: datetime | None = None,
+        since: datetime | None = None,
+        limit: int | None = None,
+    ) -> list[NewsItem]: ...
+    async def known_url_hashes(self, hashes: Sequence[str]) -> set[str]: ...
+    async def delete_news_before(self, before: datetime) -> int: ...
     async def get_orderflow(
         self, symbol: str, *, as_of: datetime | None = None, start: datetime | None = None
     ) -> list[OrderflowRow]: ...

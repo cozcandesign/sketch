@@ -232,9 +232,10 @@ haberler Kademe 2 (Sonnet) ile derin analiz ediliyor, haber modülü ve veto ça
 fiyat hareketi kaydediliyor; Maliyet ekranı ve `/costs` açık.
 
 Görevler
-- [ ] F4-1 `collectors/rss` (4 kaynak, koşullu istek, `published_at` normalizasyonu) + testleri (kaydedilmiş
-      feed fixture'ları). `collectors/cryptopanic` (token varsa) + testi.
-- [ ] F4-2 `llm/dedup.py`: URL kanonikleştirme, başlık token Jaccard, grup başı seçimi + testleri.
+- [x] F4-1 `collectors/rss` (4 kaynak, koşullu istek, `published_at` normalizasyonu) + testleri (kaydedilmiş
+      feed fixture'ları). `collectors/cryptopanic` (token varsa) + testi. **CryptoPanic kısmı açık:**
+      ücretsiz plan anahtarı yok, kullanıcıya soruldu.
+- [x] F4-2 `llm/dedup.py`: URL kanonikleştirme, başlık token Jaccard, grup başı seçimi + testleri.
 - [ ] F4-3 `llm/client.py`: `AsyncAnthropic`, `messages.parse`, sabit sistem promptu + `cache_control`, hata
       sınıfı ayrımı (429/5xx backoff, 4xx down); `llm/budget.py`: `llm_usage` (model + kademe), günlük tavan,
       kademe bazlı kapanma sırası (önce Kademe 2, sonra Kademe 1) + testleri (SDK mock; gerçek API'ye çıkan

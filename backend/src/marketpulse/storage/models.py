@@ -276,6 +276,38 @@ class Liquidation(BaseModel):
     usd: float
 
 
+class NewsItem(BaseModel):
+    """Bir haber kaydı (`news_items`).
+
+    `url_hash` kanonikleştirilmiş URL'in SHA-256'sıdır: aynı haber iki kaynaktan ya da izleme
+    parametreleriyle gelse de tek satır olur. `id` yazmadan önce `None`; okurken doludur.
+    `dedup_group_id` ve `is_group_head` dedup adımında (F4-2) doldurulur.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int | None = None
+    source: str
+    url: str
+    url_hash: str
+    title: str
+    summary: str | None = None
+    published_at: datetime
+    fetched_at: datetime
+    dedup_group_id: int | None = None
+    is_group_head: bool = True
+    raw_json: str | None = None
+
+
+class FeedCursor(BaseModel):
+    """Bir feed'in koşullu istek durumu: `ETag` / `Last-Modified` (ARCHITECTURE.md §4)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    etag: str | None = None
+    last_modified: str | None = None
+
+
 class OrderflowRow(BaseModel):
     """Bir dakikalık order flow özeti (`orderflow_1m`).
 
