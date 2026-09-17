@@ -45,13 +45,16 @@ async def repo() -> AsyncIterator[SqliteRepository]:
 
 
 def build(
-    repo: SqliteRepository, clock: FakeClock, messages: Iterable[dict[str, object]]
+    repo: SqliteRepository,
+    clock: FakeClock,
+    messages: Iterable[dict[str, object]],
+    health: HealthRegistry | None = None,
 ) -> OrderflowWsCollector:
     return OrderflowWsCollector(
         "wss://test/stream",
         repo,
         clock,
-        HealthRegistry(clock),
+        health or HealthRegistry(clock),
         symbols=[SYMBOL],
         connect=fake_connect(messages),
     )
@@ -137,12 +140,30 @@ async def test_liquidations_are_stored_raw_as_they_arrive(repo: SqliteRepository
 
 async def test_a_broken_message_does_not_stop_the_stream(repo: SqliteRepository) -> None:
     clock = FakeClock(T0)
-    collector = build(repo, clock, [])
+    health = HealthRegistry(clock)
+    collector = build(repo, clock, [], health)
     # Hata yolunu doğrudan çağırıyoruz: bozuk mesaj akışı durdurmamalı.
     await collector.handle_message("bu json değil")
     await collector.handle_message(json.dumps({"stream": "x", "data": {"e": "aggTrade"}}))
 
     assert collector.aggregator.open_minutes() == 0
+
+
+async def test_an_unparsable_trade_is_recorded_not_swallowed(repo: SqliteRepository) -> None:
+    """Alan adı değişirse akış sessizce sıfır hacim yazmamalı: hata sağlık kaydına düşer (F3-10)."""
+    clock = FakeClock(T0)
+    health = HealthRegistry(clock)
+    collector = build(repo, clock, [], health)
+
+    # "q" (miktar) alanı eksik: Binance şeması değişmiş gibi.
+    await collector.handle_message(
+        json.dumps({"stream": "btcusdt@aggTrade", "data": {"e": "aggTrade", "s": SYMBOL, "T": 1}})
+    )
+
+    entry = next(row for row in health.snapshot() if row.collector == "ws_orderflow")
+    assert entry.consecutive_failures == 1
+    assert entry.last_error is not None
+    assert entry.last_success_at is None  # hata "başarı" diye kaydedilmedi
 
 
 async def test_disconnecting_stops_the_coverage_clock_and_flushes(

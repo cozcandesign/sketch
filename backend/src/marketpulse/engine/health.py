@@ -49,6 +49,25 @@ class HealthRegistry:
         self._entries: dict[str, _Entry] = {}
         self._last_flushed: dict[str, HealthStatus] = {}
 
+    async def restore(self, repo: Repository) -> int:
+        """Önceki çalışmanın sağlık kayıtlarını DB'den yükler.
+
+        Kayıt bellekte tutulur; yeniden başlatmadan sonra boş başlarsa günde bir çalışan bir iş
+        saatlerce "çalışıyor hiç" görünür — oysa dün çalışmıştır. Yaş yine `last_success_at`
+        üzerinden hesaplandığı için uzun bir kesinti "kopuk" olarak görünmeye devam eder:
+        bu, durumu gizlemez, yalnızca bilineni geri getirir (K22).
+        """
+        restored = 0
+        for row in await repo.list_collector_health():
+            entry = self._entries.setdefault(row.collector, _Entry())
+            entry.last_success_at = row.last_success_at
+            entry.last_error_at = row.last_error_at
+            entry.last_error = row.last_error
+            entry.consecutive_failures = row.consecutive_failures
+            self._last_flushed[row.collector] = row.status
+            restored += 1
+        return restored
+
     def register(
         self,
         name: str,

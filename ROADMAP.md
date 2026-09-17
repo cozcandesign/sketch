@@ -195,6 +195,12 @@ Görevler
 - [x] F3-8 Frontend: Coin detay alt panelleri — `FundingPanel`, `OIPanel` (OI + fiyat, durum etiketi),
       `LiquidationPanel`, `OrderBookPanel`, `CVDPanel`; `ModuleBreakdown`'da orderflow bileşenleri.
 - [x] F3-9 Retention: orderflow_1m ve liquidations 90 gün.
+- [x] F3-10 Canlı çalıştırmada çıkan düzeltmeler: (a) `spot_klines` sağlık kaydı `gap_check` işine
+      bağlanır — REST toplayıcı çalışırken şeritte yanlışlıkla "aksıyor" görünüyordu; (b) türev geçmiş
+      tamamlamaları (`funding_hist`, `open_interest_hist`) açılışta bir kez koşar — funding z-skoru ve
+      `funding_dev` bileşeni ilk 8 saat boyunca eksik kalıyordu; (c) sağlık kayıtları açılışta DB'den
+      okunur — yeniden başlatmadan sonra seyrek işler "çalışıyor hiç" görünüyordu; (d) futures WS
+      mesaj ayrıştırma hataları sessizce yutulmaz, loglanır ve sağlık kaydına yazılır.
 
 Bitti sayılır
 - WS akışları 24 saat kesintisiz; `coverage_seconds` ortalaması > 3500/3600.

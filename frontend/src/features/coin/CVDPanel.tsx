@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/Card'
 import { MetricRow } from '@/components/domain/MetricRow'
 import type { OrderflowPoint } from '@/api/types'
 import { flowRatio } from '@/features/coin/orderflowMath'
-import { formatPercent, formatScore } from '@/lib/format'
+import { formatCount, formatPercent, formatScore } from '@/lib/format'
 import { formatTime } from '@/lib/time'
 import { tr } from '@/i18n/tr'
 
@@ -23,6 +23,8 @@ export function CVDPanel({ points }: { points: OrderflowPoint[] }) {
   }))
   const net = points.reduce((sum, point) => sum + (point.cvd_delta ?? 0), 0)
   const ratio = flowRatio(points)
+  // İşlem sayısı ayrı gösterilir: sıfırsa sorun "akış sakin" değil, aggTrade akışı gelmiyordur.
+  const trades = points.reduce((sum, point) => sum + (point.trade_count ?? 0), 0)
 
   return (
     <Card title={tr.orderflow.cvd}>
@@ -36,6 +38,12 @@ export function CVDPanel({ points }: { points: OrderflowPoint[] }) {
           label={tr.orderflow.cvdRatio}
           value={formatPercent(ratio)}
           tone={ratio == null ? 'muted' : ratio > 0 ? 'up' : 'down'}
+        />
+        <MetricRow
+          label={tr.orderflow.cvdTrades}
+          value={formatCount(trades)}
+          tone={trades === 0 ? 'muted' : 'text'}
+          title={tr.orderflow.cvdTradesHint}
         />
         {data.length === 0 ? null : (
           <ResponsiveContainer width="100%" height={140}>

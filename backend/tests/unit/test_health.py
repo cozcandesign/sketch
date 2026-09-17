@@ -120,3 +120,39 @@ def test_a_frequent_job_never_gets_a_shorter_threshold_than_the_default() -> Non
 
     clock.set(T0 + timedelta(minutes=5))
     assert registry.status_of("resolve") == "ok"
+
+
+async def test_restore_brings_back_the_previous_run(
+    clock: FakeClock, repo: SqliteRepository
+) -> None:
+    """Yeniden başlatmadan sonra günlük iş "çalışıyor hiç" değil, "dün çalıştı" görünür."""
+    before = HealthRegistry(clock)
+    before.register("retention", expected_interval=timedelta(days=1))
+    before.record_success("retention")
+    await before.flush(repo)
+
+    clock.set(T0 + timedelta(hours=2))  # makine yeniden başladı
+    after = HealthRegistry(clock)
+    restored = await after.restore(repo)
+    after.register("retention", expected_interval=timedelta(days=1))
+
+    assert restored == 1
+    assert after.status_of("retention") == "ok"
+    assert after.snapshot()[0].last_success_at == T0
+
+
+async def test_restore_does_not_hide_a_long_outage(
+    clock: FakeClock, repo: SqliteRepository
+) -> None:
+    """Geri yükleme "bilineni" getirir, durumu gizlemez: üç gün kapalı kalan iş yine kopuk."""
+    before = HealthRegistry(clock)
+    before.register("retention", expected_interval=timedelta(days=1))
+    before.record_success("retention")
+    await before.flush(repo)
+
+    clock.set(T0 + timedelta(days=3))
+    after = HealthRegistry(clock)
+    await after.restore(repo)
+    after.register("retention", expected_interval=timedelta(days=1))
+
+    assert after.status_of("retention") == "down"

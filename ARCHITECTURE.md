@@ -176,6 +176,10 @@ class Collector(Protocol):
     def health(self) -> CollectorHealth: ...
 ```
 
+Sağlık kayıtları engine açılışında DB'den geri yüklenir: yeniden başlatmadan sonra seyrek çalışan bir iş (`retention`, `predict_24h`) "hiç çalışmadı" görünmemeli. Yaş yine `last_success_at`'ten hesaplandığı için uzun kesinti "kopuk" görünmeye devam eder.
+
+Türev geçmiş tamamlamaları (`funding_hist`, `open_interest_hist`) periyotları seyrek olduğu için açılışta bir kez de koşar; yoksa yeni kurulumda funding dağılımı saatlerce boş kalır ve `funding_dev` bileşeni hesaba giremez.
+
 Sağlık kaydı yalnızca collector'ları değil, zamanlanmış işleri de (`heartbeat`, `resolve`, `gap_check`)
 izler; veri durumu şeridinde ikisi de görünür.
 
@@ -214,7 +218,7 @@ ve tek dosyada görünürlük için.
 | `module_calibration_fit` | her gün 02:00 | Modül başına lojistik kalibrasyon fit (§11) |
 | `weekly_report` | Pazartesi 06:00 | Haftalık rapor + ağırlık önerisi |
 | `retention` | her gün 03:00 | Eski satırları siler (§6.6) |
-| `gap_check` | her 5 dk | Mum boşluklarını REST ile doldurur |
+| `gap_check` | her 5 dk | Mum boşluklarını REST ile doldurur; `spot_klines` sağlığını da bu iş besler (REST toplayıcının tek düzenli turu budur) |
 | `health_heartbeat` | her 30 sn | `collector_health` + engine heartbeat satırı |
 | `budget_rollover` | her gün 00:00 | LLM günlük sayaç sıfırlanır, kapatılmış kademeler yeniden açılır |
 

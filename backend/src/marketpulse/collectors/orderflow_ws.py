@@ -149,8 +149,16 @@ class OrderflowWsCollector:
         data = payload.get("data", payload) if isinstance(payload, dict) else {}
         if not isinstance(data, dict):
             return
-        with contextlib.suppress(KeyError, ValueError, TypeError):
+        try:
             await self._dispatch(data, stream=str(payload.get("stream", "")))
+        except (KeyError, ValueError, TypeError) as exc:
+            # Sessizce yutulmaz: Binance bir alan adını değiştirirse akış "çalışıyor" görünüp
+            # sıfır hacim yazardı; bileşen kendiliğinden kaybolurdu. Görünür olsun (CLAUDE.md §2).
+            self._health.record_error(self.name, exc)
+            logger.bind(collector=self.name, event=str(data.get("e", "?"))).warning(
+                "mesaj ayrıştırılamadı: {e}", e=repr(exc)
+            )
+            return
         self._health.record_success(self.name)
 
     async def _dispatch(self, data: dict[str, Any], *, stream: str) -> None:

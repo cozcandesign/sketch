@@ -219,6 +219,9 @@ export const tr = {
     cvd: 'Kümülatif hacim farkı (CVD)',
     cvdWindow: 'pencere net akışı',
     cvdRatio: 'hacme oranı',
+    cvdTrades: 'işlem sayısı',
+    cvdTradesHint:
+      'Pencerede kaç agresif işlem sayıldı. Sıfırsa piyasa sakin değildir; futures işlem akışı gelmiyordur.',
     cvdHint:
       'Agresif alıcı ve satıcıların net farkı. Pencere başından itibaren toplanır; mutlak değeri değil eğimi okunur.',
     longShort: 'Long/short oranı',

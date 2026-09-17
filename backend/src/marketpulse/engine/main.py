@@ -50,6 +50,8 @@ from marketpulse.tracking.resolver import Resolver
 SHUTDOWN_GRACE_SEC = 10.0
 SCHEMA_WAIT_SEC = 60.0
 PREDICT_OFFSET = timedelta(seconds=10)  # tetik dakikasının mumu kapansın diye
+# REST mum toplayıcısının ritmi: `spot_klines` sağlığı bu işten beslenir.
+GAP_CHECK_EVERY = timedelta(minutes=5)
 CANDLE_INTERVALS: tuple[Interval, ...] = (
     Interval.M1,
     Interval.M5,
@@ -155,9 +157,6 @@ def build_jobs(
                 w=stats.waiting,
             )
 
-    async def gap_check(_scheduled: datetime) -> None:
-        await klines.fill_gaps()
-
     def collector_job(name: str, work: Callable[[], Awaitable[int]]) -> JobFn:
         """Collector işini sağlık kaydına bağlar: hata engine'i düşürmez (CLAUDE.md §6)."""
 
@@ -179,7 +178,12 @@ def build_jobs(
     return [
         Job("heartbeat", timedelta(seconds=heartbeat_interval_sec), heartbeat),
         Job("resolve", timedelta(minutes=1), resolve, offset=timedelta(seconds=30)),
-        Job("gap_check", timedelta(minutes=5), gap_check, offset=timedelta(seconds=20)),
+        Job(
+            "gap_check",
+            GAP_CHECK_EVERY,
+            collector_job(klines.name, klines.fill_gaps),
+            offset=timedelta(seconds=20),
+        ),
         Job("retention", timedelta(days=1), retention, offset=timedelta(hours=3)),
         *[
             Job(f"predict_{h.value}", h.cadence, predict_job(h), offset=PREDICT_OFFSET)
@@ -232,7 +236,11 @@ def build_jobs(
 
 
 async def _startup_tasks(
-    client: BinanceClient, limiter: RateLimiter, klines: KlinesCollector, health: HealthRegistry
+    client: BinanceClient,
+    limiter: RateLimiter,
+    klines: KlinesCollector,
+    derivatives: DerivativeCollectors,
+    health: HealthRegistry,
 ) -> None:
     """Gerçek ağırlık limitini uygular ve geçmişi doldurur. Hata engine'i düşürmez."""
     try:
@@ -244,6 +252,27 @@ async def _startup_tasks(
     except Exception as exc:
         health.record_error(klines.name, exc)
         logger.bind(collector=klines.name).warning("açılış görevleri başarısız: {e}", e=repr(exc))
+    await _startup_backfills(derivatives, health)
+
+
+async def _startup_backfills(derivatives: DerivativeCollectors, health: HealthRegistry) -> None:
+    """Türev geçmişlerini açılışta bir kez doldurur.
+
+    Bu işlerin kendi periyotları seyrektir (funding 8 saat): yalnızca zamanlayıcıya bırakılırsa
+    yeni kurulan bir sistemde funding dağılımı saatlerce boş kalır ve `funding_dev` bileşeni
+    hesaba giremez. Her biri ayrı denenir; biri patlarsa diğeri yine çalışır.
+    """
+    for name, work in (
+        (derivatives.funding.name, derivatives.funding.backfill),
+        (derivatives.open_interest.name, derivatives.open_interest.backfill),
+    ):
+        try:
+            await work()
+        except Exception as exc:
+            health.record_error(name, exc)
+            logger.bind(collector=name).warning("açılış geçmişi alınamadı: {e}", e=repr(exc))
+        else:
+            health.record_success(name)
 
 
 @dataclass(frozen=True)
@@ -254,6 +283,7 @@ class EngineRuntime:
     klines: KlinesCollector
     klines_ws: KlinesWsCollector
     orderflow_ws: OrderflowWsCollector
+    derivatives: DerivativeCollectors
     jobs: list[Job]
 
 
@@ -268,6 +298,11 @@ async def build_runtime(
 ) -> EngineRuntime:
     """Collector'ları, tahmin yolunu ve iş listesini kurar; sağlık kayıtlarını açar."""
     health = HealthRegistry(clock)
+    # Önceki çalışmadan kalan sağlık kayıtları geri yüklenir: seyrek işler yeniden başlatmadan
+    # sonra "çalışıyor hiç" görünmesin (F3-10).
+    restored = await health.restore(repo)
+    if restored:
+        logger.bind(process="engine").info("{n} sağlık kaydı geri yüklendi", n=restored)
     outbox = Outbox(repo, clock)
     symbols = list(settings.symbols)
     klines = KlinesCollector(client, repo, clock, symbols=symbols, intervals=CANDLE_INTERVALS)
@@ -304,7 +339,12 @@ async def build_runtime(
     for job in jobs:
         health.register(job.name, expected_interval=job.every)
     return EngineRuntime(
-        health=health, klines=klines, klines_ws=klines_ws, orderflow_ws=orderflow_ws, jobs=jobs
+        health=health,
+        klines=klines,
+        klines_ws=klines_ws,
+        orderflow_ws=orderflow_ws,
+        derivatives=derivatives,
+        jobs=jobs,
     )
 
 
@@ -351,6 +391,7 @@ async def run(
             parts.orderflow_ws,
             parts.jobs,
         )
+        derivatives = parts.derivatives
 
         tasks = [
             asyncio.create_task(
@@ -367,7 +408,10 @@ async def run(
         ]
         if run_startup_tasks:
             tasks.append(
-                asyncio.create_task(_startup_tasks(client, limiter, klines, health), name="startup")
+                asyncio.create_task(
+                    _startup_tasks(client, limiter, klines, derivatives, health),
+                    name="startup",
+                )
             )
         log.info(
             "engine başladı (sürüm {v}, commit {sha}, semboller {s})",
