@@ -10,7 +10,7 @@ import asyncio
 import contextlib
 import json
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Final
 
 from loguru import logger
@@ -27,6 +27,10 @@ COLLECTOR_NAME: Final = "ws_orderflow"
 PLANNED_RECONNECT: Final = timedelta(hours=23)
 FLUSH_INTERVAL_SEC: Final = 5.0
 DEPTH_STREAM: Final = "depth20@100ms"
+# Bağlantı bu kadar süredir açıkken tek bir işlem mesajı gelmediyse akış ölü sayılır.
+# Takip edilen semboller (BTC/ETH/SOL) bu süre boyunca işlemsiz kalmaz; funding ya da
+# likidasyon için aynı şey söylenemez, o yüzden yalnızca işlem akışı bu şekilde denetlenir.
+TRADE_SILENCE_LIMIT: Final = timedelta(minutes=5)
 
 
 def streams_for(symbols: Sequence[str]) -> list[str]:
@@ -99,6 +103,9 @@ class OrderflowWsCollector:
         self._flush_interval_sec = flush_interval_sec
         self._agg = OrderflowAggregator()
         self._last_flush = clock.now()
+        self._connected_at: datetime | None = None
+        self._trades_seen = 0
+        self._trade_stream_reported = False
 
     @property
     def aggregator(self) -> OrderflowAggregator:
@@ -110,7 +117,8 @@ class OrderflowWsCollector:
         logger.bind(collector=self.name).info("order flow akışına bağlanılıyor")
         try:
             async with self._connect(self._url) as messages:
-                self._agg.mark_connected(self._clock.now())
+                self._connected_at = self._clock.now()
+                self._agg.mark_connected(self._connected_at)
                 self._health.record_success(self.name)
                 async for raw in messages:
                     if stop.is_set():
@@ -121,6 +129,7 @@ class OrderflowWsCollector:
                         logger.bind(collector=self.name).info("planlı yeniden bağlanma")
                         return
         finally:
+            self._connected_at = None
             self._agg.mark_disconnected(self._clock.now())
             await self.flush()
 
@@ -160,10 +169,36 @@ class OrderflowWsCollector:
             )
             return
         self._health.record_success(self.name)
+        self._check_trade_stream()
+
+    def _check_trade_stream(self) -> None:
+        """İşlem akışı susmuşsa şeritte görünsün (K22).
+
+        Derinlik akışı saniyede on mesaj gönderdiği için collector her koşulda "çalışıyor"
+        görünüyordu; oysa üç akıştan biri hiç veri vermeyebiliyor. Durum bir kez bildirilir,
+        işlem geldiğinde geri alınır.
+        """
+        if self._connected_at is None:
+            return
+        if self._trades_seen > 0:
+            if self._trade_stream_reported:
+                self._trade_stream_reported = False
+                self._health.set_status(self.name, None)
+            return
+        silent_for = self._clock.now() - self._connected_at
+        if silent_for < TRADE_SILENCE_LIMIT or self._trade_stream_reported:
+            return
+        self._trade_stream_reported = True
+        minutes = int(silent_for.total_seconds() // 60)
+        reason = f"aggTrade akışı {minutes} dakikadır mesaj göndermiyor (diğer akışlar çalışıyor)"
+        self._health.record_error(self.name, reason)
+        self._health.set_status(self.name, "degraded")
+        logger.bind(collector=self.name).warning(reason)
 
     async def _dispatch(self, data: dict[str, Any], *, stream: str) -> None:
         event = data.get("e")
         if event == "aggTrade":
+            self._trades_seen += 1
             self._agg.add_trade(
                 str(data["s"]),
                 from_epoch_ms(int(data["T"])),

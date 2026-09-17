@@ -223,8 +223,15 @@ def test_an_unusually_large_liquidation_wave_flips_the_sign() -> None:
     assert result.components["liquidations"] > 0  # long tasfiyesi ama ters çevrildi
 
 
-def test_no_liquidations_is_neutral_not_missing() -> None:
-    result = compute(build_snapshot(flow=steady_flow()))
+def test_a_quiet_window_on_a_working_feed_is_neutral_not_missing() -> None:
+    """Akışın çalıştığı biliniyorsa sakin pencere nötr okunur.
+
+    (Akışın hiç veri vermediği durum ayrı: bkz. TestNoDataIsNotNeutral — orada bileşen
+    "nötr" değil, "yok" olmalıdır.)
+    """
+    flow = steady_flow()
+    flow.iloc[0, flow.columns.get_loc("liq_count")] = 1  # akış çalışıyor, pencere dışında bir olay
+    result = compute(build_snapshot(flow=flow))
     assert result.components["liquidations"] == pytest.approx(0.0)
 
 
@@ -389,3 +396,55 @@ class TestCvdFallsBackToTakerVolume:
         snapshot = build_snapshot(prices=[100.0] * 60, flow=silent)
 
         assert self._score(snapshot) is None
+
+
+class TestNoDataIsNotNeutral:
+    """Bileşen hesaplanamıyorsa "nötr" demez, hiç görünmez (F3-13).
+
+    Aradaki fark ensemble'a giriyor: "sakin" bir bilgidir ve ağırlığıyla skoru seyreltir;
+    "veri yok" ise ağırlığı diğer bileşenlere dağıttırır.
+    """
+
+    def _components(self, snapshot: FeatureSnapshot) -> dict[str, float]:
+        return dict(OrderflowModule().compute(snapshot, HORIZON).components)
+
+    def test_a_dead_liquidation_feed_is_not_reported_as_a_quiet_market(self) -> None:
+        # Hiç likidasyon yazılmamış: akış ölü. "Zorunlu kapatma yok" demek yanlış olurdu.
+        never = steady_flow(2880, liq_long_usd=0.0, liq_short_usd=0.0, liq_count=0)
+        snapshot = build_snapshot(prices=[100.0] * 60, flow=never)
+
+        assert "liquidations" not in self._components(snapshot)
+
+    def test_a_genuinely_quiet_window_still_reports_quiet(self) -> None:
+        """Akış çalışıyorsa (veri setinde likidasyon var) sakin pencere sakin diye okunur."""
+        flow = steady_flow(2880, liq_long_usd=0.0, liq_short_usd=0.0, liq_count=0)
+        # 40 saat önce bir likidasyon: akışın çalıştığının kanıtı, pencerenin dışında.
+        flow.iloc[0, flow.columns.get_loc("liq_long_usd")] = 50_000.0
+        flow.iloc[0, flow.columns.get_loc("liq_count")] = 1
+        snapshot = build_snapshot(prices=[100.0] * 60, flow=flow)
+
+        components = self._components(snapshot)
+
+        assert components.get("liquidations") == 0.0
+
+    def test_coverage_drops_when_components_cannot_be_computed(self) -> None:
+        """Bağlantı kesintisiz olsa bile eksik bileşen kapsamayı düşürmeli."""
+        full = build_snapshot(
+            prices=[100.0 + i * 0.1 for i in range(60)],
+            flow=steady_flow(
+                2880, buy_vol=30.0, sell_vol=10.0, cvd_delta=20.0, liq_count=1, liq_long_usd=1000.0
+            ),
+            funding=[0.0001 * (i % 5) for i in range(30)],
+            funding_live=0.0005,
+            open_interest=[1000.0 + i for i in range(30)],
+        )
+        partial = build_snapshot(
+            prices=[100.0 + i * 0.1 for i in range(60)],
+            flow=steady_flow(2880, buy_vol=0.0, sell_vol=0.0, cvd_delta=0.0, trade_count=0),
+        )
+
+        rich = OrderflowModule().compute(full, HORIZON)
+        poor = OrderflowModule().compute(partial, HORIZON)
+
+        assert rich.coverage > poor.coverage
+        assert poor.coverage < 0.5  # 5 bileşenden yalnızca biri hesaplanabiliyor

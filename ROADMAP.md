@@ -195,6 +195,16 @@ Görevler
 - [x] F3-8 Frontend: Coin detay alt panelleri — `FundingPanel`, `OIPanel` (OI + fiyat, durum etiketi),
       `LiquidationPanel`, `OrderBookPanel`, `CVDPanel`; `ModuleBreakdown`'da orderflow bileşenleri.
 - [x] F3-9 Retention: orderflow_1m ve liquidations 90 gün.
+- [x] F3-13 Dürüstlük taraması bulguları (canlı çalıştırma sonrası tek geçişte):
+      (a) `liquidations` bileşeni, `forceOrder` akışı hiç veri vermezken "pencerede zorunlu
+      kapatma yok" diyordu — 0.15 ağırlıkla ensemble'a giren **yanlış bir bilgi**; artık 48 saatlik
+      veri setinde tek bir likidasyon yoksa bileşen "veri yok" der.
+      (b) Order flow modülünün `coverage` değeri yalnızca bağlantı süresine bakıyordu; 5 bileşenden
+      2'si eksikken bile ~1.0 çıkıyor ve güveni şişiriyordu — artık hesaplanabilen bileşenlerin
+      ağırlık payıyla çarpılır.
+      (c) `ws_orderflow` sağlık kaydı herhangi bir mesajda "çalışıyor" oluyordu; derinlik akışı
+      gelirken işlem akışı ölüyken şerit "çalışıyor" gösteriyordu (K22 ihlali) — artık bağlantı
+      belirli bir süredir açıkken hiç işlem mesajı gelmediyse `degraded` ve sebebi yazılır.
 - [x] F3-12 `signals/orderflow.py` `cvd` bileşeni: WS `aggTrade` veri vermediğinde `taker_volume`
       veri setine düşer (ARCHITECTURE §4 bu ucu zaten "CVD'nin REST yedeği" diye tanımlıyor).
       Sebep: kullanıcının makinesinde futures işlem akışı hiç mesaj göndermiyor (F3-11 ölçümü);

@@ -74,7 +74,7 @@ class OrderflowModule:
         if not available:
             return no_data(self.name, snapshot.as_of)
         scores = {name: part.score for name, part in available.items()}
-        coverage = _coverage(snapshot, window)
+        coverage = _coverage(snapshot, window, scores)
         return SignalResult(
             module=self.name,
             score=weighted_score(scores, COMPONENT_WEIGHTS),
@@ -149,7 +149,14 @@ def _liquidations(
     shorts = _tail_sum(flow, "liq_short_usd", snapshot.as_of, window)
     total = longs + shorts
     if total <= 0:
-        return Component(0.0, (render("liq_quiet"),))
+        # Penceredeki sıfır iki ayrı şey olabilir: piyasa gerçekten sakindi, ya da likidasyon
+        # akışı hiç veri vermiyor. İkisini ayırmak için tüm veri setine (48 saat) bakılır:
+        # BTC/ETH/SOL iki gün boyunca tek bir zorunlu kapatma olmadan geçmez. Hiç yoksa bileşen
+        # "sakin" demez, "veri yok" der — yoksa bilmediğimiz bir şeyi 0.15 ağırlıkla skora
+        # sokmuş oluruz (CLAUDE.md §2).
+        if _seen_any_liquidation(flow):
+            return Component(0.0, (render("liq_quiet"),))
+        return None
     # Short'lar tasfiye olunca zorunlu ALIM gelir → yukarı; long'lar tasfiye olunca satış → aşağı.
     net = (shorts - longs) / (total + EPS)
     median = _median_window_total(flow, window)
@@ -226,8 +233,15 @@ def _cvd(
     return Component(score, (render(key, pct=_pct(pressure, digits=0)),))
 
 
-def _coverage(snapshot: FeatureSnapshot, window: timedelta) -> float:
-    """Kapsama: dakikaların gerçekten dinlenmiş saniyesi + türev veri setlerinin varlığı."""
+def _coverage(
+    snapshot: FeatureSnapshot, window: timedelta, available: Mapping[str, float]
+) -> float:
+    """Kapsama: veri akışının sağlığı × gerçekten hesaplanabilen bileşenlerin ağırlık payı.
+
+    İkinci çarpan şart: bağlantı kesintisiz olsa bile bileşenlerin yarısı hesaplanamıyorsa modül
+    kendi işinin yarısını yapamıyordur. Yalnızca bağlantı süresine bakan eski hesap, işlem ve
+    funding bileşenleri eksikken bile ~1.0 diyordu ve güveni şişiriyordu (CLAUDE.md §2).
+    """
     flow = _tail(snapshot.dataset("orderflow_1m"), snapshot.as_of, window)
     minutes = max(1, int(window / timedelta(minutes=1)))
     if flow.empty:
@@ -238,7 +252,10 @@ def _coverage(snapshot: FeatureSnapshot, window: timedelta) -> float:
     datasets = [
         1.0 if snapshot.has(name) else 0.0 for name in ("funding", "open_interest", "orderflow_1m")
     ]
-    return round(0.5 * listened + 0.5 * (sum(datasets) / len(datasets)), 4)
+    feeds = 0.5 * listened + 0.5 * (sum(datasets) / len(datasets))
+    total_weight = sum(COMPONENT_WEIGHTS.values())
+    computed = sum(COMPONENT_WEIGHTS.get(name, 0.0) for name in available)
+    return round(feeds * (computed / total_weight if total_weight else 0.0), 4)
 
 
 def _confidence(coverage: float, scores: Mapping[str, float]) -> float:
@@ -321,6 +338,14 @@ def _tail_sum(
     frame: pd.DataFrame, column: str, as_of: pd.Timestamp | object, window: timedelta
 ) -> float:
     return float(_numeric(_tail(frame, as_of, window), column).fillna(0.0).sum())
+
+
+def _seen_any_liquidation(frame: pd.DataFrame) -> bool:
+    """Veri setinde hiç likidasyon görülmüş mü? Akışın çalıştığının kanıtı budur."""
+    longs = _numeric(frame, "liq_long_usd").fillna(0.0).sum()
+    shorts = _numeric(frame, "liq_short_usd").fillna(0.0).sum()
+    counts = _numeric(frame, "liq_count").fillna(0.0).sum()
+    return bool(float(longs) + float(shorts) + float(counts) > 0)
 
 
 def _median_window_total(frame: pd.DataFrame, window: timedelta) -> float | None:

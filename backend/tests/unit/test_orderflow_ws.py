@@ -197,3 +197,86 @@ async def test_writes_do_not_erase_columns_written_by_another_source(
     assert row.depth1pct_imbalance == pytest.approx(0.2)
     assert row.buy_vol == pytest.approx(3.0)
     assert row.trade_count == 7
+
+
+class TestSilentTradeStreamIsVisible:
+    """Derinlik akışı gelirken işlem akışı ölüyse şerit bunu göstermeli (K22, F3-13)."""
+
+    def _ticking_connect(
+        self, clock: FakeClock, messages: list[dict[str, object]], *, step: timedelta
+    ) -> ConnectFactory:
+        """Her mesajda saati ilerleten sahte akış: sessizlik süresi gerçekten geçsin."""
+
+        @contextlib.asynccontextmanager
+        async def connect(_url: str) -> AsyncIterator[AsyncIterator[str]]:
+            async def stream() -> AsyncIterator[str]:
+                for message in messages:
+                    clock.set(clock.now() + step)
+                    yield json.dumps(message)
+
+            yield stream()
+
+        return connect
+
+    def _depth_messages(self, count: int) -> list[dict[str, object]]:
+        return [
+            ws_depth20(SYMBOL, bids=[(1.0, 2.0)], asks=[(3.0, 4.0)], ts=T0) for _ in range(count)
+        ]
+
+    async def _run_depth_only(
+        self, repo: SqliteRepository, clock: FakeClock, health: HealthRegistry, *, minutes: int
+    ) -> None:
+        collector = OrderflowWsCollector(
+            "wss://test/stream",
+            repo,
+            clock,
+            health,
+            symbols=[SYMBOL],
+            connect=self._ticking_connect(
+                clock, self._depth_messages(minutes), step=timedelta(minutes=1)
+            ),
+        )
+        await collector.run(asyncio.Event())
+
+    async def test_depth_alone_does_not_keep_the_collector_green(
+        self, repo: SqliteRepository
+    ) -> None:
+        clock = FakeClock(T0)
+        health = HealthRegistry(clock)
+        health.register("ws_orderflow")
+
+        await self._run_depth_only(repo, clock, health, minutes=7)
+
+        assert health.status_of("ws_orderflow") == "degraded"
+        entry = next(row for row in health.snapshot() if row.collector == "ws_orderflow")
+        assert entry.last_error is not None
+        assert "aggTrade" in entry.last_error
+
+    async def test_it_does_not_cry_wolf_in_the_first_minutes(self, repo: SqliteRepository) -> None:
+        """Yeni bağlanmış bir akış için sessizlik normaldir; eşik dolmadan alarm verilmez."""
+        clock = FakeClock(T0)
+        health = HealthRegistry(clock)
+        health.register("ws_orderflow")
+
+        await self._run_depth_only(repo, clock, health, minutes=3)
+
+        assert health.status_of("ws_orderflow") == "ok"
+
+    async def test_a_trade_clears_the_warning(self, repo: SqliteRepository) -> None:
+        clock = FakeClock(T0)
+        health = HealthRegistry(clock)
+        health.register("ws_orderflow")
+        messages: list[dict[str, object]] = self._depth_messages(7)
+        messages.append(ws_agg_trade(SYMBOL, qty=1.0, price=1.0, is_buyer_maker=False, ts=T0))
+        collector = OrderflowWsCollector(
+            "wss://test/stream",
+            repo,
+            clock,
+            health,
+            symbols=[SYMBOL],
+            connect=self._ticking_connect(clock, messages, step=timedelta(minutes=1)),
+        )
+
+        await collector.run(asyncio.Event())
+
+        assert health.status_of("ws_orderflow") == "ok"
