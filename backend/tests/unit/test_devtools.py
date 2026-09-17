@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 from collections import Counter
+from pathlib import Path
 
 import pytest
 
@@ -217,3 +218,33 @@ class TestWsCheck:
         assert "aggTrade hiç gelmedi" in out
         assert "forceOrder hiç gelmedi" in out
         assert "İşlem mesajı hiç gelmedi" in out
+
+
+class TestMakefileUsesTheSourcePath:
+    """Backend komutları venv'deki kuruluma güvenmemeli.
+
+    Bu hata iki kez ısırdı (`make dev-stop`, sonra `make wscheck`): venv'deki editable kurulum
+    eskiyince `python -m marketpulse...` "No module named marketpulse" diyor. Çözüm her komutun
+    başına `PYTHONPATH=backend/src` koymak; bu test yenisi eklenince unutulmasını engeller.
+    """
+
+    def _makefile(self, repo_root: Path) -> list[str]:
+        return (repo_root / "Makefile").read_text(encoding="utf-8").splitlines()
+
+    def test_no_backend_python_call_runs_without_pythonpath(self, repo_root: Path) -> None:
+        offenders = [
+            line.strip()
+            for line in self._makefile(repo_root)
+            if "backend/.venv/bin/python" in line
+            and "PYTHONPATH=backend/src" not in line
+            and "$(BACKEND_PY)" not in line
+            and not line.lstrip().startswith("#")
+            and "test -x" not in line  # yalnızca varlık denetimi, çalıştırma değil
+        ]
+        assert offenders == [], f"PYTHONPATH'siz backend çağrısı: {offenders}"
+
+    def test_alembic_also_sees_the_package(self, repo_root: Path) -> None:
+        """Alembic'in env.py'si `marketpulse` modellerini import eder; o da kaynağı görmeli."""
+        alembic_lines = [line for line in self._makefile(repo_root) if "bin/alembic" in line]
+        assert alembic_lines, "alembic çağrısı bulunamadı"
+        assert all("PYTHONPATH=backend/src" in line for line in alembic_lines)

@@ -12,9 +12,11 @@ NPM := npm --prefix frontend
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo bilinmiyor)
 export MP_GIT_SHA = $(GIT_SHA)
 
-# Geliştirme aracı doğrudan kaynaktan koşar (PYTHONPATH): paket kurulumu eskimiş olsa bile
-# (ör. yeni bir pull'dan hemen sonra) `make dev-stop` çalışır.
-DEV_RUNNER = PYTHONPATH=backend/src backend/.venv/bin/python -m marketpulse.devtools.runner
+# Backend komutları doğrudan kaynaktan koşar (PYTHONPATH). Sebep: venv'deki editable kurulum
+# eskimiş ya da kırılmış olabilir (yeni pull, taşınmış klasör, elle silinmiş .venv) ve o zaman
+# `python -m marketpulse...` "No module named marketpulse" der. Kaynak yolu her koşulda doğrudur.
+BACKEND_PY = PYTHONPATH=backend/src backend/.venv/bin/python
+DEV_RUNNER = $(BACKEND_PY) -m marketpulse.devtools.runner
 
 help: ## Komut listesi
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -69,17 +71,17 @@ typecheck: ## mypy --strict + tsc
 check: lint typecheck test ## Commit öncesi zorunlu: lint + typecheck + test
 
 migrate: ensure-deps ## Alembic: şemayı en son sürüme getir
-	backend/.venv/bin/alembic -c backend/alembic.ini upgrade head
+	PYTHONPATH=backend/src backend/.venv/bin/alembic -c backend/alembic.ini upgrade head
 
 gen-types: ensure-deps ## OpenAPI → frontend/src/api/types.gen.ts
-	backend/.venv/bin/python -m marketpulse.api.openapi_export > frontend/openapi.json
+	$(BACKEND_PY) -m marketpulse.api.openapi_export > frontend/openapi.json
 	$(NPM) run gen-types
 
 wscheck: ensure-deps ## Futures WS akışlarını dinler ve hangisinden kaç mesaj geldiğini yazar (teşhis)
-	backend/.venv/bin/python -m marketpulse.devtools.wscheck $(ARGS)
+	$(BACKEND_PY) -m marketpulse.devtools.wscheck $(ARGS)
 
 backfill: ensure-deps ## Geçmiş mum verisini Binance'ten çeker (ARGS="--days 7" ile sınırlanabilir)
-	backend/.venv/bin/python -m marketpulse.backfill $(ARGS)
+	$(BACKEND_PY) -m marketpulse.backfill $(ARGS)
 
 backtest: ## Backtest motoru (Faz 7)
 	@echo "backtest Faz 7'de gelir (ROADMAP F7-3)"; exit 1
