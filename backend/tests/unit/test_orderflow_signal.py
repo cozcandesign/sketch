@@ -49,8 +49,22 @@ def build_snapshot(
     funding: list[float] | None = None,
     funding_live: float | None = None,
     open_interest: list[float] | None = None,
+    taker: list[tuple[float, float]] | None = None,
 ) -> FeatureSnapshot:
     datasets: dict[str, pd.DataFrame] = {}
+    if taker is not None:
+        datasets["taker_volume"] = dataset_frame(
+            "taker_volume",
+            [
+                {
+                    "ts": AS_OF - timedelta(minutes=5 * (len(taker) - 1 - i)),
+                    "buy_vol": buy,
+                    "sell_vol": sell,
+                    "ratio": buy / sell if sell else 0.0,
+                }
+                for i, (buy, sell) in enumerate(taker)
+            ],
+        )
     if funding is not None:
         datasets["funding"] = dataset_frame(
             "funding",
@@ -328,3 +342,50 @@ def test_component_weights_match_the_architecture_table() -> None:
         "book_imbalance": 0.15,
         "cvd": 0.20,
     }
+
+
+class TestCvdFallsBackToTakerVolume:
+    """WS işlem akışı susarsa CVD bileşeni REST yedeğinden hesaplanır (ARCHITECTURE §4, F3-12).
+
+    Canlıda ölçüldü: futures `aggTrade` akışı hiç mesaj göndermiyor, aynı sunucudaki derinlik
+    akışı çalışıyor. Yedek olmadan bileşen tamamen kayboluyordu.
+    """
+
+    def _score(self, snapshot: FeatureSnapshot) -> float | None:
+        result = OrderflowModule().compute(snapshot, HORIZON)
+        return result.components.get("cvd")
+
+    def test_taker_volume_is_used_when_the_trade_stream_is_silent(self) -> None:
+        # Dakika satırları var (derinlik yazıyor) ama işlem hacmi sıfır: akış susuyor.
+        silent = steady_flow(120, buy_vol=0.0, sell_vol=0.0, cvd_delta=0.0, trade_count=0)
+        snapshot = build_snapshot(
+            prices=[100.0] * 60,
+            flow=silent,
+            taker=[(70.0, 30.0)] * 12,  # belirgin alış baskısı
+        )
+
+        score = self._score(snapshot)
+
+        assert score is not None, "yedek kaynak varken bileşen kaybolmamalı"
+        assert score > 0
+
+    def test_the_websocket_wins_when_it_has_data(self) -> None:
+        """Akış çalışıyorsa ince çözünürlüklü kaynak tercih edilir; yedek devreye girmez."""
+        flowing = steady_flow(120, buy_vol=30.0, sell_vol=10.0, cvd_delta=20.0)
+        snapshot = build_snapshot(
+            prices=[100.0] * 60,
+            flow=flowing,
+            taker=[(10.0, 90.0)] * 12,  # yedek ters yönü söylerdi
+        )
+
+        score = self._score(snapshot)
+
+        assert score is not None
+        assert score > 0  # WS'in dediği yön
+
+    def test_no_component_when_both_sources_are_empty(self) -> None:
+        """İkisi de boşsa bileşen gerçekten "veri yok"tur; uydurma sayı üretilmez."""
+        silent = steady_flow(120, buy_vol=0.0, sell_vol=0.0, cvd_delta=0.0, trade_count=0)
+        snapshot = build_snapshot(prices=[100.0] * 60, flow=silent)
+
+        assert self._score(snapshot) is None

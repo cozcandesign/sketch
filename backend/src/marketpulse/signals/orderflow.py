@@ -178,19 +178,44 @@ def _book_imbalance(flow: pd.DataFrame, snapshot: FeatureSnapshot) -> Component 
     )
 
 
+def _net_flow(
+    flow: pd.DataFrame, snapshot: FeatureSnapshot, window: timedelta
+) -> tuple[float, float] | None:
+    """Pencerede (net agresif akış, toplam hacim). İki kaynak sırayla denenir.
+
+    Birinci kaynak WS `aggTrade` (dakikalık `orderflow_1m`): en ince çözünürlük.
+    İkinci kaynak REST `taker_volume` (5 dk ızgarası): ARCHITECTURE §4 bunu zaten "CVD'nin REST
+    yedeği" olarak tanımlar. Yedek gerçek bir ihtiyaç: canlıda futures işlem akışının hiç mesaj
+    göndermediği ölçüldü (aynı sunucudaki derinlik akışı çalışırken), bileşen bu yüzden tamamen
+    kayboluyordu. İkisi de boşsa `None` — o zaman bileşen gerçekten "veri yok"tur.
+    """
+    for frame, delta_column in ((flow, "cvd_delta"), (snapshot.dataset("taker_volume"), None)):
+        if frame.empty:
+            continue
+        recent = _tail(frame, snapshot.as_of, window)
+        buys = _numeric(recent, "buy_vol").fillna(0.0)
+        sells = _numeric(recent, "sell_vol").fillna(0.0)
+        volume = float((buys + sells).sum())
+        if volume <= 0:
+            continue
+        if delta_column is not None and delta_column in recent:
+            net = float(_numeric(recent, delta_column).fillna(0.0).sum())
+        else:
+            net = float(buys.sum() - sells.sum())
+        return net, volume
+    return None
+
+
 def _cvd(
     flow: pd.DataFrame, snapshot: FeatureSnapshot, horizon: Horizon, window: timedelta
 ) -> Component | None:
     """Agresif alım-satım farkı ve fiyatla uyumu. Uyumsuzluk (divergence) daha güçlü sinyaldir."""
-    if flow.empty or "cvd_delta" not in flow:
+    measured = _net_flow(flow, snapshot, window)
+    if measured is None:
         return None
-    recent = _tail(flow, snapshot.as_of, window)
-    delta = _numeric(recent, "cvd_delta").dropna()
-    volume = _numeric(recent, "buy_vol").fillna(0.0) + _numeric(recent, "sell_vol").fillna(0.0)
-    if delta.empty or float(volume.sum()) <= 0:
-        return None
+    net, volume = measured
     # Hacme oranlanır: CVD hacim birimindedir, fiyat birimiyle normalize edilemez.
-    pressure = float(delta.sum()) / float(volume.sum())
+    pressure = net / volume
     price_change = _price_change(snapshot, horizon, window)
     if price_change is None or price_change == 0.0:
         return Component(clip_score(pressure), (render("cvd_flow", pct=_pct(pressure, digits=0)),))

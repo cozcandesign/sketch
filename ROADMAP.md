@@ -195,6 +195,11 @@ Görevler
 - [x] F3-8 Frontend: Coin detay alt panelleri — `FundingPanel`, `OIPanel` (OI + fiyat, durum etiketi),
       `LiquidationPanel`, `OrderBookPanel`, `CVDPanel`; `ModuleBreakdown`'da orderflow bileşenleri.
 - [x] F3-9 Retention: orderflow_1m ve liquidations 90 gün.
+- [x] F3-12 `signals/orderflow.py` `cvd` bileşeni: WS `aggTrade` veri vermediğinde `taker_volume`
+      veri setine düşer (ARCHITECTURE §4 bu ucu zaten "CVD'nin REST yedeği" diye tanımlıyor).
+      Sebep: kullanıcının makinesinde futures işlem akışı hiç mesaj göndermiyor (F3-11 ölçümü);
+      aynı sunucudaki derinlik akışı çalıştığı için ağ engeli değil, sebebi Binance tarafında
+      kanıtlanamadı. Yedek kaynak zaten toplanıyor, bileşen boş kalmamalı.
 - [x] F3-11 `make wscheck`: futures WS akışlarını 30 saniye dinleyip hangi akıştan kaç mesaj
       geldiğini yazan teşhis aracı (`devtools/`, üretim yolunda değil). Sebep: canlıda order book
       akışı geliyor ama `aggTrade` gelmiyor, işlem sayısı sıfır kalıyor; bu ortamdan Binance'e
