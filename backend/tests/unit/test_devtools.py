@@ -26,7 +26,7 @@ from marketpulse.devtools.procs import (
     port_is_busy,
 )
 from marketpulse.devtools.runner import ProcessSpec, Supervisor
-from marketpulse.devtools.wscheck import report
+from marketpulse.devtools.wscheck import progress_line, report
 
 REPO = "/home/user/sketch"
 
@@ -218,6 +218,14 @@ class TestWsCheck:
         assert "aggTrade hiç gelmedi" in out
         assert "forceOrder hiç gelmedi" in out
         assert "İşlem mesajı hiç gelmedi" in out
+
+    def test_the_progress_line_answers_the_question_on_its_own(self) -> None:
+        """Kullanıcı 30 saniyeyi beklemeden kesse bile ara satır cevabı taşımalı."""
+        line = progress_line(10.0, Counter({"depthUpdate": 1840}))
+
+        assert "10 sn" in line
+        assert "aggTrade 0" in line  # sıfır da yazılır: eksik olan görünür olsun
+        assert "depthUpdate 1840" in line
 
 
 class TestMakefileUsesTheSourcePath:

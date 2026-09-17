@@ -21,15 +21,35 @@ from marketpulse.collectors.ws_stream import binance_connect, combined_url
 from marketpulse.config import Settings
 
 DEFAULT_SECONDS = 30.0
+PROGRESS_EVERY_SEC = 5.0
 # Beklenen akış türleri: biri hiç gelmiyorsa abonelik ya da ad sorunudur.
 EXPECTED_EVENTS = ("aggTrade", "forceOrder", "depthUpdate")
 
 
-async def listen(url: str, seconds: float) -> tuple[Counter[str], Counter[str], str | None]:
+def progress_line(elapsed: float, events: Counter[str]) -> str:
+    """Ara durum satırı: beklenen üç olayın o ana kadarki sayısı.
+
+    Araç 30 saniye sessiz durursa donmuş sanılıyor; dahası kullanıcı yarıda kesse bile bu
+    satırlar sorunun cevabını zaten veriyor (CLAUDE.md §2).
+    """
+    counts = " ".join(f"{event} {events[event]}" for event in EXPECTED_EVENTS)
+    return f"  {elapsed:>3.0f} sn | toplam {sum(events.values()):>6} | {counts}"
+
+
+async def listen(
+    url: str, seconds: float, *, progress_every: float = PROGRESS_EVERY_SEC
+) -> tuple[Counter[str], Counter[str], str | None]:
     """`seconds` boyunca dinler. (akış adı sayaçları, olay türü sayaçları, ilk işlem örneği)."""
     streams: Counter[str] = Counter()
     events: Counter[str] = Counter()
     first_trade: str | None = None
+
+    async def ticker() -> None:
+        elapsed = 0.0
+        while True:
+            await asyncio.sleep(progress_every)
+            elapsed += progress_every
+            print(progress_line(elapsed, events), flush=True)
 
     async def pump() -> None:
         nonlocal first_trade
@@ -45,9 +65,15 @@ async def listen(url: str, seconds: float) -> tuple[Counter[str], Counter[str], 
                 if event == "aggTrade" and first_trade is None:
                     first_trade = json.dumps(data, ensure_ascii=False)[:300]
 
-    # Süre dolunca dinleme biter; bu normal bitiştir, hata değil.
-    with contextlib.suppress(TimeoutError):
-        await asyncio.wait_for(pump(), timeout=seconds)
+    progress = asyncio.create_task(ticker())
+    try:
+        # Süre dolunca dinleme biter; bu normal bitiştir, hata değil.
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(pump(), timeout=seconds)
+    finally:
+        progress.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await progress
     return streams, events, first_trade
 
 
@@ -87,6 +113,7 @@ async def main(argv: list[str] | None = None) -> int:
     symbols = args.symbol or list(settings.symbols)
     url = combined_url(settings.binance_ws_futures, streams_for(symbols))
     print(f"Bağlanılıyor ({args.seconds:.0f} sn): {url}")
+    print("Dinleniyor; her 5 saniyede bir ara durum yazılır.\n")
 
     try:
         streams, events, first_trade = await listen(url, args.seconds)
