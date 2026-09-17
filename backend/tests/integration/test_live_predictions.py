@@ -17,9 +17,15 @@ from marketpulse.features.feature_store import FeatureStore
 from marketpulse.features.snapshot import FeatureSnapshot
 from marketpulse.reporting.banned_words import find_banned
 from marketpulse.signals.base import ModuleName, SignalResult
+from marketpulse.signals.orderflow import OrderflowModule
 from marketpulse.signals.technical import TechnicalModule
 from marketpulse.storage import Candle, Outbox, SqliteRepository, make_engine
-from marketpulse.storage.models import FundingRate, OpenInterestPoint, OrderflowRow
+from marketpulse.storage.models import (
+    FundingRate,
+    OpenInterestPoint,
+    OrderflowRow,
+    TakerVolumePoint,
+)
 from marketpulse.tracking.ledger import Ledger
 
 START = datetime(2026, 2, 1, tzinfo=UTC)
@@ -299,3 +305,50 @@ async def test_an_order_flow_outage_lowers_confidence_but_still_predicts(
     assert degraded.id != healthy.id
     assert degraded.confidence < healthy.confidence
     assert degraded.p_up != 0.5 or degraded.combined_score is not None  # tahmin yine üretildi
+
+
+async def test_cvd_survives_a_dead_trade_stream_through_the_real_feature_store(
+    repo: SqliteRepository,
+) -> None:
+    """Canlıdaki durum: derinlik yazılıyor, işlem akışı ölü, `taker_volume` çalışıyor.
+
+    Birim test modülü tek başına doğrular; buradaki değer bağlantıdır — `FeatureStore` gerçekten
+    `taker_volume` veri setini snapshot'a koyuyor mu? Koymazsa yedek sessizce devre dışı kalırdı.
+    """
+    await seed_market(repo)
+    await repo.upsert_orderflow(
+        [
+            OrderflowRow(
+                symbol=SYMBOL,
+                ts=AS_OF - timedelta(minutes=index),
+                buy_vol=0.0,  # işlem akışı hiç mesaj göndermiyor
+                sell_vol=0.0,
+                cvd_delta=0.0,
+                trade_count=0,
+                top20_imbalance=0.1,
+                depth1pct_imbalance=0.05,
+                coverage_seconds=60.0,
+            )
+            for index in range(1, 240)
+        ]
+    )
+    await repo.upsert_taker_volume(
+        [
+            TakerVolumePoint(
+                symbol=SYMBOL,
+                ts=AS_OF - timedelta(minutes=5 * index),
+                buy_vol=700.0,
+                sell_vol=300.0,
+                ratio=700.0 / 300.0,
+            )
+            for index in range(1, 30)
+        ]
+    )
+
+    snapshot = await FeatureStore(repo).snapshot(SYMBOL, AS_OF)
+    result = OrderflowModule().compute(snapshot, Horizon.H1H)
+
+    assert result.components.get("cvd") is not None, "REST yedeği snapshot'a ulaşmıyor"
+    assert result.components["cvd"] > 0  # alış baskısı
+    assert "liquidations" not in result.components  # ölü akış "sakin" diye okunmaz
+    assert result.coverage < 0.5  # eksik bileşenler kapsamaya yansır
