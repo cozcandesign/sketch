@@ -26,7 +26,7 @@ from marketpulse.devtools.procs import (
     port_is_busy,
 )
 from marketpulse.devtools.runner import ProcessSpec, Supervisor
-from marketpulse.devtools.wscheck import progress_line, report
+from marketpulse.devtools.wscheck import probe_urls, probe_verdict, progress_line, report
 
 REPO = "/home/user/sketch"
 
@@ -218,6 +218,28 @@ class TestWsCheck:
         assert "aggTrade hiç gelmedi" in out
         assert "forceOrder hiç gelmedi" in out
         assert "İşlem mesajı hiç gelmedi" in out
+
+    def test_the_probes_cover_the_candidate_spellings(self) -> None:
+        """Üç aday: olduğu gibi, tamamen küçük harf, tek akış ucu."""
+        urls = [probe.url for probe in probe_urls("wss://fstream.binance.com/stream", "BTCUSDT")]
+
+        assert urls == [
+            "wss://fstream.binance.com/stream?streams=btcusdt@aggTrade",
+            "wss://fstream.binance.com/stream?streams=btcusdt@aggtrade",
+            "wss://fstream.binance.com/ws/btcusdt@aggTrade",
+        ]
+
+    def test_the_verdict_names_the_spelling_that_worked(self) -> None:
+        verdict = probe_verdict([("olduğu gibi", 0), ("küçük harf", 412), ("tek akış", -1)])
+
+        assert "küçük harf" in verdict
+        assert "olduğu gibi" not in verdict
+
+    def test_the_verdict_does_not_blame_the_spelling_when_none_worked(self) -> None:
+        """Hiçbiri veri vermediyse sebep ad değildir; araç uydurmaz."""
+        verdict = probe_verdict([("a", 0), ("b", 0), ("c", 0)])
+
+        assert "akış adında değil" in verdict
 
     def test_the_progress_line_answers_the_question_on_its_own(self) -> None:
         """Kullanıcı 30 saniyeyi beklemeden kesse bile ara satır cevabı taşımalı."""

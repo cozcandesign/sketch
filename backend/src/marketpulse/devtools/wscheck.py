@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import json
 from collections import Counter
+from dataclasses import dataclass
 from typing import Any
 
 from websockets.exceptions import WebSocketException
@@ -22,8 +23,79 @@ from marketpulse.config import Settings
 
 DEFAULT_SECONDS = 30.0
 PROGRESS_EVERY_SEC = 5.0
+PROBE_SECONDS = 8.0
 # Beklenen akış türleri: biri hiç gelmiyorsa abonelik ya da ad sorunudur.
 EXPECTED_EVENTS = ("aggTrade", "forceOrder", "depthUpdate")
+
+
+@dataclass(frozen=True)
+class Probe:
+    """Tek bir abonelik yazımı denemesi: etiket + bağlanılacak URL."""
+
+    label: str
+    url: str
+
+
+def probe_urls(base_url: str, symbol: str) -> list[Probe]:
+    """`aggTrade` için üç aday yazım.
+
+    Neden üçü birden: `depth20@100ms` geliyor ama `aggTrade` gelmiyor; aradaki tek göze çarpan
+    fark akış adındaki büyük harf. Ancak spot tarafında `miniTicker` (büyük T) sorunsuz çalışıyor,
+    yani "her yerde küçük harf" bir tahmin olurdu. Tahmin etmek yerine üçünü de ölçüyoruz.
+    """
+    lower = symbol.lower()
+    single_base = base_url.rstrip("/").removesuffix("/stream")
+    return [
+        Probe("combined, olduğu gibi (aggTrade)", combined_url(base_url, [f"{lower}@aggTrade"])),
+        Probe("combined, küçük harf (aggtrade)", combined_url(base_url, [f"{lower}@aggtrade"])),
+        Probe("tek akış /ws (aggTrade)", f"{single_base}/ws/{lower}@aggTrade"),
+    ]
+
+
+async def count_trades(url: str, seconds: float) -> int:
+    """Verilen URL'de `seconds` boyunca kaç işlem mesajı geldiğini sayar. Hata → -1."""
+    seen = 0
+
+    async def pump() -> None:
+        nonlocal seen
+        async with binance_connect(url) as messages:
+            async for raw in messages:
+                payload: Any = json.loads(raw)
+                if not isinstance(payload, dict):
+                    continue
+                data = payload.get("data", payload)
+                if isinstance(data, dict) and data.get("e") == "aggTrade":
+                    seen += 1
+
+    try:
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(pump(), timeout=seconds)
+    except (OSError, WebSocketException):
+        return -1
+    return seen
+
+
+async def probe_trade_streams(base_url: str, symbol: str, seconds: float) -> list[tuple[str, int]]:
+    """Üç yazımı sırayla dener. Çıktı: (etiket, işlem sayısı); -1 bağlanamadı demektir."""
+    results: list[tuple[str, int]] = []
+    for probe in probe_urls(base_url, symbol):
+        count = await count_trades(probe.url, seconds)
+        print(
+            f"  {probe.label:<34} → {'bağlanamadı' if count < 0 else f'{count} işlem'}", flush=True
+        )
+        results.append((probe.label, count))
+    return results
+
+
+def probe_verdict(results: list[tuple[str, int]]) -> str:
+    """Ölçüme dayalı sonuç cümlesi. Hiçbiri veri vermediyse bunu da açıkça söyler."""
+    working = [label for label, count in results if count > 0]
+    if not working:
+        return (
+            "Üç yazımın hiçbiri işlem vermedi: sorun akış adında değil. "
+            "Bu ağdan futures işlem akışı engelli olabilir."
+        )
+    return "İşlem veren yazım(lar): " + ", ".join(working)
 
 
 def progress_line(elapsed: float, events: Counter[str]) -> str:
@@ -124,6 +196,11 @@ async def main(argv: list[str] | None = None) -> int:
         print("ya da .env içindeki MP_BINANCE_WS_FUTURES adresi yanlış.")
         return 1
     report(streams, events, first_trade)
+
+    if events["aggTrade"] == 0:
+        print(f"\nİşlem akışı gelmedi. Abonelik yazımı deneniyor ({PROBE_SECONDS:.0f} sn × 3):")
+        results = await probe_trade_streams(settings.binance_ws_futures, symbols[0], PROBE_SECONDS)
+        print(f"\n{probe_verdict(results)}")
     return 0
 
 
